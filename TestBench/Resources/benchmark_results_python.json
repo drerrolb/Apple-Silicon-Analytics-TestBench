@@ -1,0 +1,41 @@
+{
+  "engine": "Python / Row-by-Row Loop (CPU)",
+  "device": null,
+  "total_time_ms": 469733.8,
+  "total_records": 10000000,
+  "throughput_rps": 21289.0,
+  "tasks": [
+    {
+      "name": "Total by cost centre",
+      "time_ms": 94024.9,
+      "summary": "12 groups"
+    },
+    {
+      "name": "Top 10 suppliers by spend",
+      "time_ms": 95349.0,
+      "summary": "top supplier: 1581"
+    },
+    {
+      "name": "Z-score anomaly detection",
+      "time_ms": 96532.8,
+      "summary": "20,000 anomalies"
+    },
+    {
+      "name": "Plant \u00d7 cost centre pivot",
+      "time_ms": 99482.9,
+      "summary": "48 groups"
+    },
+    {
+      "name": "Running total",
+      "time_ms": 84344.2,
+      "summary": "$2,181,033,010,410.45"
+    }
+  ],
+  "peak_memory_mb": 1976.4,
+  "timestamp": "2026-04-02T17:48:10.702596",
+  "machine_name": "Mac.modem",
+  "os_version": "Darwin 25.2.0",
+  "cpu_model": "Apple M4 Max",
+  "cpu_count": 16,
+  "python_version": "3.14.3"
+}

@@ -1,0 +1,12 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Large data files (regenerate with ./generate_data.sh)
+benchmark_data.csv
+validation_data.csv
+
+# Xcode
+DerivedData/
+*.xcuserstate

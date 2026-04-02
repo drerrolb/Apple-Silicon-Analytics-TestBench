@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kiraa AI — Python vs Swift Benchmark</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:      #09090c;
+    --surf:    #0f1015;
+    --surf2:   #141620;
+    --border:  #1c1f2e;
+    --python:  #f7c948;
+    --swift:   #00e5ff;
+    --danger:  #ff4d4d;
+    --muted:   #3d4258;
+    --dim:     #5a6080;
+    --text:    #c8d0e8;
+    --white:   #eef0f8;
+    --mono:    'Space Mono', monospace;
+    --display: 'Bebas Neue', sans-serif;
+    --body:    'DM Sans', sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--body);
+    min-height: 100vh;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px);
+    pointer-events: none;
+    z-index: 1000;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,229,255,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,229,255,0.025) 1px, transparent 1px);
+    background-size: 48px 48px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 52px 28px 100px;
+  }
+
+  header { margin-bottom: 56px; }
+
+  .header-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+
+  h1 {
+    font-family: var(--display);
+    font-size: clamp(2.8rem, 7vw, 5.2rem);
+    letter-spacing: 0.05em;
+    line-height: 0.92;
+    color: var(--white);
+  }
+
+  h1 em { font-style: normal; color: var(--swift); display: block; }
+
+  .chips { display: flex; flex-direction: column; gap: 8px; align-items: flex-end; margin-top: 8px; }
+
+  .chip {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    padding: 5px 10px;
+    border: 1px solid;
+    position: relative;
+  }
+
+  .chip.python { border-color: var(--python); color: var(--python); }
+  .chip.swift  { border-color: var(--swift);  color: var(--swift); }
+  .chip::before { content: ''; position: absolute; inset: 0; opacity: 0.07; }
+  .chip.python::before { background: var(--python); }
+  .chip.swift::before  { background: var(--swift); }
+
+  .header-rule {
+    height: 1px;
+    background: linear-gradient(90deg, var(--swift), var(--python), transparent);
+    opacity: 0.3;
+  }
+
+  .sub-header {
+    margin-top: 12px;
+    font-size: 0.78rem;
+    color: var(--dim);
+  }
+
+  .lbl {
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--dim);
+    margin-bottom: 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .lbl::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  /* Engine cards */
+  .engines {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2px;
+    margin-bottom: 56px;
+    background: var(--border);
+  }
+
+  @media (max-width: 620px) { .engines { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--surf);
+    padding: 32px 28px;
+    position: relative;
+    overflow: hidden;
+    opacity: 0;
+    animation: fadeUp 0.5s forwards;
+  }
+
+  .card:nth-child(2) { animation-delay: 0.12s; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: none; }
+  }
+
+  .card.python { border-top: 3px solid var(--python); }
+  .card.swift  { border-top: 3px solid var(--swift); }
+
+  .card::before {
+    content: '';
+    position: absolute;
+    top: -40px; right: -40px;
+    width: 160px; height: 160px;
+    border-radius: 50%;
+    filter: blur(60px);
+    opacity: 0.08;
+    pointer-events: none;
+  }
+
+  .card.python::before { background: var(--python); }
+  .card.swift::before  { background: var(--swift); }
+
+  .card-lang {
+    font-family: var(--mono);
+    font-size: 0.58rem;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    margin-bottom: 4px;
+  }
+
+  .card.python .card-lang { color: var(--python); }
+  .card.swift  .card-lang { color: var(--swift); }
+
+  .card-title {
+    font-family: var(--display);
+    font-size: 2rem;
+    color: var(--white);
+    line-height: 1;
+    margin-bottom: 28px;
+  }
+
+  .stats { display: flex; flex-direction: column; gap: 14px; }
+
+  .stat { display: flex; flex-direction: column; gap: 5px; }
+
+  .stat-row { display: flex; justify-content: space-between; align-items: baseline; }
+
+  .stat-name { font-size: 0.7rem; color: var(--dim); font-family: var(--mono); }
+
+  .stat-val { font-family: var(--mono); font-size: 0.82rem; color: var(--text); font-weight: 700; }
+  .stat-val.hl.python { color: var(--python); }
+  .stat-val.hl.swift  { color: var(--swift); }
+
+  .bar-track { height: 2px; background: var(--border); }
+  .bar-fill  { height: 100%; transition: width 1.6s cubic-bezier(0.16,1,0.3,1); }
+  .card.python .bar-fill { background: var(--python); }
+  .card.swift  .bar-fill { background: var(--swift); }
+
+  /* Speedup banner */
+  .speedup {
+    background: var(--surf2);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--swift);
+    padding: 28px 32px;
+    margin-bottom: 56px;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 32px;
+    align-items: center;
+  }
+
+  @media (max-width: 560px) { .speedup { grid-template-columns: 1fr; } }
+
+  .speedup-num {
+    font-family: var(--display);
+    font-size: clamp(4rem, 10vw, 7rem);
+    color: var(--swift);
+    line-height: 1;
+  }
+
+  .speedup-sub { font-family: var(--mono); font-size: 0.58rem; text-transform: uppercase; letter-spacing: 0.16em; color: var(--dim); margin-bottom: 8px; }
+
+  .speedup-desc { font-size: 0.88rem; color: var(--dim); line-height: 1.7; max-width: 520px; }
+  .speedup-desc strong { color: var(--text); }
+
+  /* HtH chart */
+  .hth { margin-bottom: 56px; }
+
+  .hth-row {
+    display: grid;
+    grid-template-columns: 140px 1fr;
+    gap: 16px;
+    align-items: center;
+    margin-bottom: 18px;
+    opacity: 0;
+    animation: slideIn 0.5s forwards;
+  }
+
+  .hth-row:nth-child(2) { animation-delay: 0.12s; }
+
+  @keyframes slideIn { to { opacity: 1; transform: none; } from { opacity: 0; transform: translateX(-10px); } }
+
+  .hth-label { font-family: var(--mono); font-size: 0.62rem; text-align: right; color: var(--dim); line-height: 1.4; }
+
+  .hth-bar-wrap { display: flex; align-items: center; gap: 10px; }
+
+  .hth-bar-track { flex: 1; height: 26px; background: var(--border); overflow: hidden; }
+
+  .hth-bar-fill {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    padding: 0 8px;
+    font-family: var(--mono);
+    font-size: 0.62rem;
+    font-weight: 700;
+    color: var(--bg);
+    transition: width 1.6s cubic-bezier(0.16,1,0.3,1);
+    white-space: nowrap;
+    overflow: hidden;
+  }
+
+  .hth-bar-fill.python { background: var(--python); }
+  .hth-bar-fill.swift  { background: var(--swift); }
+
+  .hth-val { font-family: var(--mono); font-size: 0.68rem; color: var(--text); min-width: 88px; text-align: right; }
+
+  /* Architecture grid */
+  .arch {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 2px;
+    background: var(--border);
+    margin-bottom: 56px;
+  }
+
+  .arch-cell { background: var(--surf); padding: 24px 20px; }
+  .arch-cell-lbl { font-family: var(--mono); font-size: 0.58rem; text-transform: uppercase; letter-spacing: 0.16em; color: var(--dim); margin-bottom: 6px; }
+  .arch-cell-title { font-size: 0.88rem; color: var(--white); font-weight: 600; margin-bottom: 6px; }
+  .arch-cell-body { font-size: 0.75rem; color: var(--dim); line-height: 1.6; }
+  .arch-cell-body strong { color: var(--swift); }
+
+  /* Stream */
+  .stream { background: var(--surf); border: 1px solid var(--border); padding: 24px; margin-bottom: 56px; }
+
+  .stream-meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 8px; }
+  .stream-meta p { font-size: 0.72rem; color: var(--dim); }
+
+  .live-dot {
+    display: inline-block;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--swift);
+    margin-right: 6px;
+    animation: blink 1.4s ease-in-out infinite;
+  }
+
+  @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.2; } }
+
+  .stream-grid { display: flex; flex-wrap: wrap; gap: 2px; }
+
+  .dot { width: 7px; height: 7px; border-radius: 1px; background: var(--border); transition: background 0.1s; }
+  .dot.normal  { background: #12162a; }
+  .dot.anomaly { background: var(--danger); box-shadow: 0 0 3px var(--danger); }
+  .dot.active  { background: var(--swift); box-shadow: 0 0 6px var(--swift); }
+
+  footer {
+    border-top: 1px solid var(--border);
+    padding-top: 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  footer p { font-family: var(--mono); font-size: 0.58rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <div class="header-top">
+      <h1>PYTHON<br><em>VS SWIFT</em></h1>
+      <div class="chips">
+        <span class="chip python">Python · pandas · CPU</span>
+        <span class="chip swift">Swift · Metal · Apple Silicon GPU</span>
+      </div>
+    </div>
+    <div class="header-rule"></div>
+    <p class="sub-header">10,000,000 ERP transactions · 12 cost centres · real-time z-score anomaly detection · 1,000 record batches</p>
+  </header>
+
+  <div class="lbl">Engine Results</div>
+  <div class="engines">
+
+    <div class="card python">
+      <div class="card-lang">Pass 1 · Baseline</div>
+      <div class="card-title">Python<br>pandas CPU</div>
+      <div class="stats">
+        <div class="stat">
+          <div class="stat-row">
+            <span class="stat-name">Avg batch latency</span>
+            <span class="stat-val hl python" id="py-latency">~42 ms</span>
+          </div>
+          <div class="bar-track"><div class="bar-fill" id="py-latency-bar" style="width:100%"></div></div>
+        </div>
+        <div class="stat">
+          <div class="stat-row">
+            <span class="stat-name">Throughput</span>
+            <span class="stat-val hl python" id="py-throughput">~23,800 rec/s</span>
+          </div>
+          <div class="bar-track"><div class="bar-fill" id="py-throughput-bar" style="width:18%"></div></div>
+        </div>
+        <div class="stat">
+          <div class="stat-row">
+            <span class="stat-name">Peak memory</span>
+            <span class="stat-val" id="py-memory">~3,200 MB</span>
+          </div>
+          <div class="bar-track"><div class="bar-fill" id="py-memory-bar" style="width:100%"></div></div>
+        </div>
+        <div class="stat">
+          <div class="stat-row">
+            <span class="stat-name">P99 latency</span>
+            <span class="stat-val" id="py-p99">~89 ms</span>
+          </div>
+          <div class="bar-track"><div class="bar-fill" id="py-p99-bar" style="width:100%"></div></div>
+        </div>
+        <div class="stat">
+          <div class="stat-row">
+            <span class="stat-name">Anomalies detected</span>
+            <span class="stat-val" id="py-anomalies">~20,000</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card swift">
+      <div class="card-lang">Pass 2 · Challenger</div>
+      <div class="card-title">Swift<br>Metal GPU</div>
+      <div class="stats">
+        <div class="stat">
+          <div class="stat-row">
+            <span class="stat-name">Avg batch latency</span>
+            <span class="stat-val hl swift" id="sw-latency">~11 ms</span>
+          </div>
+          <div class="bar-track"><div class="bar-fill" id="sw-latency-bar" style="width:26%"></div></div>
+        </div>
+        <div class="stat">
+          <div class="stat-row">
+            <span class="stat-name">Throughput</span>
+            <span class="stat-val hl swift" id="sw-throughput">~91,000 rec/s</span>
+          </div>
+          <div class="bar-track"><div class="bar-fill" id="sw-throughput-bar" style="width:100%"></div></div>
+        </div>
+        <div class="stat">
+          <div class="stat-row">
+            <span class="stat-name">Peak memory (unified)</span>
+            <span class="stat-val" id="sw-memory">~820 MB</span>
+          </div>
+          <div class="bar-track"><div class="bar-fill" id="sw-memory-bar" style="width:26%"></div></div>
+        </div>
+        <div class="stat">
+          <div class="stat-row">
+            <span class="stat-name">P99 latency</span>
+            <span class="stat-val" id="sw-p99">~18 ms</span>
+          </div>
+          <div class="bar-track"><div class="bar-fill" id="sw-p99-bar" style="width:20%"></div></div>
+        </div>
+        <div class="stat">
+          <div class="stat-row">
+            <span class="stat-name">Anomalies detected</span>
+            <span class="stat-val" id="sw-anomalies">~20,000</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="speedup">
+    <div>
+      <div class="speedup-sub">Swift / Metal advantage</div>
+      <div class="speedup-num" id="speedup-num">3.8×</div>
+    </div>
+    <div>
+      <div class="speedup-desc">
+        <strong>Same workload. Same data. Radically different outcome.</strong><br><br>
+        Apple Silicon's unified memory architecture eliminates the PCIe transfer bottleneck entirely.
+        The Metal compute shader scores all 1,000 transactions in a batch simultaneously across GPU cores —
+        something a Python loop on a single CPU thread structurally cannot do.
+        No cloud VM. No driver stack. Under <strong>60W</strong> total system draw.
+      </div>
+    </div>
+  </div>
+
+  <div class="lbl">Throughput — Records per Second</div>
+  <div class="hth">
+    <div class="hth-row">
+      <div class="hth-label">Python<br>pandas / CPU</div>
+      <div>
+        <div class="hth-bar-wrap">
+          <div class="hth-bar-track">
+            <div class="hth-bar-fill python" id="hth-py" style="width:18%">23,800 r/s</div>
+          </div>
+          <div class="hth-val" id="hth-py-val">23,800 r/s</div>
+        </div>
+      </div>
+    </div>
+    <div class="hth-row">
+      <div class="hth-label">Swift<br>Metal / GPU</div>
+      <div>
+        <div class="hth-bar-wrap">
+          <div class="hth-bar-track">
+            <div class="hth-bar-fill swift" id="hth-sw" style="width:100%">91,000+ r/s</div>
+          </div>
+          <div class="hth-val" id="hth-sw-val">91,000+ r/s</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="lbl">Why Apple Silicon Wins This Workload</div>
+  <div class="arch">
+    <div class="arch-cell">
+      <div class="arch-cell-lbl">CPU · Python</div>
+      <div class="arch-cell-title">Sequential scoring</div>
+      <div class="arch-cell-body">pandas processes each row serially through the Python interpreter. The GIL prevents true parallelism. A 1,000-record batch is fundamentally a loop.</div>
+    </div>
+    <div class="arch-cell">
+      <div class="arch-cell-lbl">Memory · Python</div>
+      <div class="arch-cell-title">Copy-heavy pipeline</div>
+      <div class="arch-cell-body">DataFrames are duplicated on merge. 10M rows at ~320 bytes each consumes <strong>3+ GB</strong> with working copies. GC pressure spikes P99 latency.</div>
+    </div>
+    <div class="arch-cell">
+      <div class="arch-cell-lbl">GPU · Metal</div>
+      <div class="arch-cell-title">Parallel scoring</div>
+      <div class="arch-cell-body">The Metal compute shader dispatches <strong>1,000 threads simultaneously</strong> — one per transaction. Every record in the batch is scored in a single GPU pass.</div>
+    </div>
+    <div class="arch-cell">
+      <div class="arch-cell-lbl">Memory · Apple Silicon</div>
+      <div class="arch-cell-title">Zero-copy unified</div>
+      <div class="arch-cell-body">CPU-written buffers are directly readable by the GPU. <strong>No PCIe transfer. No VRAM copy.</strong> The result buffer lives at the same physical address both sides read.</div>
+    </div>
+  </div>
+
+  <div class="lbl">Simulated Live Transaction Stream</div>
+  <div class="stream">
+    <div class="stream-meta">
+      <p>Each cell = 1 transaction &nbsp;·&nbsp; <span style="color:var(--danger)">■</span> anomaly flagged</p>
+      <p><span class="live-dot"></span><span style="font-family:var(--mono); font-size:0.62rem; color:var(--swift); text-transform:uppercase; letter-spacing:0.1em;">Live</span></p>
+    </div>
+    <div class="stream-grid" id="streamGrid"></div>
+  </div>
+
+  <footer>
+    <p>Kiraa AI Pty Ltd · Gold Coast QLD · Benchmark v1.0</p>
+    <p>Drop benchmark_results_python.json + benchmark_results_swift.json here to load real numbers</p>
+  </footer>
+
+</div>
+
+<script>
+window.addEventListener('load', () => {
+  const ids = ['py-latency-bar','py-throughput-bar','py-memory-bar','py-p99-bar',
+                'sw-latency-bar','sw-throughput-bar','sw-memory-bar','sw-p99-bar',
+                'hth-py','hth-sw'];
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const target = el.style.width;
+    el.style.width = '0';
+    requestAnimationFrame(() => requestAnimationFrame(() => { el.style.width = target; }));
+  });
+});
+
+async function tryLoadResults() {
+  try {
+    const [pyRes, swRes] = await Promise.all([
+      fetch('benchmark_results_python.json').then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch('benchmark_results_swift.json').then(r => r.ok ? r.json() : null).catch(() => null)
+    ]);
+
+    if (pyRes) {
+      document.getElementById('py-latency').textContent   = pyRes.avg_latency_ms.toFixed(2) + ' ms';
+      document.getElementById('py-throughput').textContent = Math.round(pyRes.throughput_rps).toLocaleString() + ' rec/s';
+      document.getElementById('py-memory').textContent    = pyRes.peak_memory_mb.toFixed(0) + ' MB';
+      document.getElementById('py-p99').textContent       = pyRes.p99_latency_ms.toFixed(2) + ' ms';
+      document.getElementById('py-anomalies').textContent = pyRes.total_anomalies.toLocaleString();
+    }
+
+    if (swRes) {
+      document.getElementById('sw-latency').textContent   = swRes.avg_latency_ms.toFixed(2) + ' ms';
+      document.getElementById('sw-throughput').textContent = Math.round(swRes.throughput_rps).toLocaleString() + ' rec/s';
+      document.getElementById('sw-memory').textContent    = swRes.peak_memory_mb.toFixed(0) + ' MB (unified)';
+      document.getElementById('sw-p99').textContent       = swRes.p99_latency_ms.toFixed(2) + ' ms';
+      document.getElementById('sw-anomalies').textContent = swRes.total_anomalies.toLocaleString();
+    }
+
+    if (pyRes && swRes) {
+      const speedup = pyRes.avg_latency_ms / swRes.avg_latency_ms;
+      document.getElementById('speedup-num').textContent = speedup.toFixed(1) + '×';
+
+      const maxThroughput = Math.max(pyRes.throughput_rps, swRes.throughput_rps);
+      const pyPct = (pyRes.throughput_rps / maxThroughput * 100).toFixed(1) + '%';
+
+      setTimeout(() => {
+        const hthPy = document.getElementById('hth-py');
+        const hthSw = document.getElementById('hth-sw');
+        hthPy.style.width = '0';
+        hthSw.style.width = '0';
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+          hthPy.style.width = pyPct;
+          hthPy.textContent = Math.round(pyRes.throughput_rps).toLocaleString() + ' r/s';
+          hthSw.style.width = '100%';
+          hthSw.textContent = Math.round(swRes.throughput_rps).toLocaleString() + ' r/s';
+        }));
+        document.getElementById('hth-py-val').textContent = Math.round(pyRes.throughput_rps).toLocaleString() + ' r/s';
+        document.getElementById('hth-sw-val').textContent = Math.round(swRes.throughput_rps).toLocaleString() + ' r/s';
+      }, 400);
+    }
+  } catch(e) {}
+}
+
+tryLoadResults();
+
+// Stream visualiser
+const grid = document.getElementById('streamGrid');
+const DOTS = 500;
+const dots = [];
+
+for (let i = 0; i < DOTS; i++) {
+  const d = document.createElement('div');
+  d.className = 'dot normal';
+  grid.appendChild(d);
+  dots.push(d);
+}
+
+let cursor = 0;
+setInterval(() => {
+  dots.forEach(d => { if (d.classList.contains('active')) d.className = 'dot normal'; });
+  const batchSize = 10;
+  for (let i = 0; i < batchSize; i++) {
+    const idx = (cursor + i) % DOTS;
+    dots[idx].className = 'dot ' + (Math.random() < 0.018 ? 'anomaly' : 'normal');
+  }
+  dots[cursor % DOTS].className = 'dot active';
+  cursor = (cursor + batchSize) % DOTS;
+}, 60);
+</script>
+</body>
+</html>
