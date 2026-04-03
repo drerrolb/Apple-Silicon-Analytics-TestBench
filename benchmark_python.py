@@ -234,31 +234,51 @@ def main():
     print(f"\n  Machine:  {machine['machine_name']}")
     print(f"  CPU:      {machine['cpu_model']}")
     print(f"  Python:   {machine['python_version']}")
+    print(f"  OS:       {machine['os_version']}")
+    print(f"  Cores:    {machine['cpu_count']}")
     print(f"  Time:     {machine['timestamp']}")
 
     # Load or generate data
+    data_source = None
+    data_gen_time_ms = 0
+
     if args.from_csv:
+        data_source = args.from_csv
         print(f"\n  Loading data from {args.from_csv}...")
         t0 = time.perf_counter()
         df = load_csv(args.from_csv)
         load_time = time.perf_counter() - t0
+        data_gen_time_ms = load_time * 1000
         print(f"  Loaded {len(df):,} rows in {load_time:.2f}s")
     else:
+        data_source = "in-memory (generated)"
         print(f"\n  Generating {args.rows:,} rows (seed={RANDOM_SEED})...")
         t0 = time.perf_counter()
         df = generate_data(args.rows, verbose=args.verbose)
         load_time = time.perf_counter() - t0
+        data_gen_time_ms = load_time * 1000
         print(f"  Generated {len(df):,} rows in {load_time:.2f}s")
 
     n_rows = len(df)
-    print(f"  Memory: {df.memory_usage(deep=True).sum() / 1_048_576:.0f} MB")
+    mem_mb = df.memory_usage(deep=True).sum() / 1_048_576
+    print(f"  Memory: {mem_mb:.0f} MB")
+
+    # ── Data summary ─────────────────────────────────────────────────────
+    print(f"\n  {'─' * 50}")
+    print(f"  Data Summary:")
+    print(f"    Source:            {data_source}")
+    print(f"    Rows:              {n_rows:,}")
+    print(f"    Amount range:      ${df['amount'].min():>14,.2f} to ${df['amount'].max():>14,.2f}")
+    print(f"    Amount mean:       ${df['amount'].mean():>14,.2f}")
+    print(f"    Amount sum:        ${df['amount'].sum():>14,.2f}")
+    print(f"    Unique suppliers:  {df['supplier_id'].nunique():,}")
+    print(f"    Cost centres:      {df['cost_centre'].nunique()}")
+    print(f"    Plant codes:       {df['plant_code'].nunique()}")
+    print(f"  {'─' * 50}")
 
     # Export to CSV if requested
     if args.export_csv:
         print(f"\n  Exporting {n_rows:,} rows to {args.export_csv}...")
-        export_df = df[["amount", "cost_centre_id", "txn_type_id" if "txn_type_id" in df.columns else "supplier_id",
-                         "supplier_id", "plant_code_id"]].copy()
-        # Ensure we have the right columns
         out = pd.DataFrame({
             "amount": df["amount"],
             "cost_centre_id": df["cost_centre_id"] if "cost_centre_id" in df.columns
@@ -282,16 +302,20 @@ def main():
         ("Running total",              task5_running_total),
     ]
 
-    print(f"\n{'─' * 60}")
+    print(f"\n{'═' * 60}")
     print(f"  Running 5 aggregation tasks ({n_rows:,} rows each)")
     print(f"  Method: Python for-loop (row-by-row, NO vectorization)")
-    print(f"{'─' * 60}")
+    print(f"{'═' * 60}")
 
     task_results = []
     total_time = 0.0
 
+    # Collect detailed results for validation
+    all_details = {}
+
     for i, (name, fn) in enumerate(tasks, 1):
-        print(f"\n  Task {i}: {name}")
+        print(f"\n  Task {i}/5: {name}")
+        print(f"  Processing {n_rows:,} rows...")
         print(f"  {'·' * 50}")
 
         t0 = time.perf_counter()
@@ -300,53 +324,181 @@ def main():
 
         total_time += elapsed_ms
 
-        # Extract a summary value for display
-        if isinstance(result, dict):
-            summary = f"{len(result)} groups"
-        elif isinstance(result, list):
-            summary = f"top supplier: {result[0][0]}" if result else "none"
-        elif isinstance(result, tuple):
-            summary = f"{result[0]:,} anomalies"
-        else:
-            summary = f"${result:,.2f}"
+        # ── Per-task detailed output ─────────────────────────────────────
+        details = {"rows_processed": n_rows}
 
-        print(f"  Result:  {summary}")
-        print(f"  Time:    {elapsed_ms:,.1f} ms ({elapsed_ms / 1000:.2f}s)")
+        if i == 1:
+            # Total by cost centre
+            totals = result
+            summary = f"{len(totals)} groups"
+            grand_total = sum(totals.values())
+            largest_cc = max(totals, key=totals.get)
+            smallest_cc = min(totals, key=totals.get)
+            details["totals"] = {cc: round(v, 2) for cc, v in totals.items()}
+            details["grand_total"] = round(grand_total, 2)
+
+            print(f"  ✓ Completed in {elapsed_ms:,.1f} ms ({elapsed_ms / 1000:.1f}s)")
+            print(f"    Groups:   {len(totals)}")
+            print(f"    Largest:  {largest_cc} = ${totals[largest_cc]:>16,.2f}")
+            print(f"    Smallest: {smallest_cc} = ${totals[smallest_cc]:>16,.2f}")
+            print(f"    Grand total: ${grand_total:>16,.2f}")
+            for cc in COST_CENTRES:
+                print(f"      {cc:<18} ${totals.get(cc, 0):>16,.2f}")
+
+        elif i == 2:
+            # Top 10 suppliers
+            top10 = result
+            summary = f"top supplier: {top10[0][0]}" if top10 else "none"
+            details["top_10"] = [{"supplier_id": int(sid), "total": round(amt, 2)} for sid, amt in top10]
+
+            print(f"  ✓ Completed in {elapsed_ms:,.1f} ms ({elapsed_ms / 1000:.1f}s)")
+            print(f"    Top 10 suppliers:")
+            for rank, (sid, amt) in enumerate(top10, 1):
+                print(f"      #{rank:<3} Supplier {sid}: ${amt:>16,.2f}")
+
+        elif i == 3:
+            # Z-score anomaly detection
+            anomaly_count, baselines = result
+            anomaly_rate = anomaly_count / n_rows * 100
+            summary = f"{anomaly_count:,} anomalies"
+            details["anomaly_count"] = anomaly_count
+            details["anomaly_rate_pct"] = round(anomaly_rate, 4)
+            details["z_threshold"] = Z_THRESHOLD
+            details["baselines"] = {
+                cc: {"mean": round(bl["mean"], 2), "std": round(bl["std"], 2)}
+                for cc, bl in baselines.items()
+            }
+
+            print(f"  ✓ Completed in {elapsed_ms:,.1f} ms ({elapsed_ms / 1000:.1f}s)")
+            print(f"    Z-threshold: {Z_THRESHOLD}")
+            print(f"    Anomalies:   {anomaly_count:,} ({anomaly_rate:.4f}%)")
+            print(f"    Baselines (mean / std):")
+            for cc in COST_CENTRES:
+                bl = baselines[cc]
+                print(f"      {cc:<18} mean=${bl['mean']:>14,.2f}  std=${bl['std']:>12,.2f}")
+
+        elif i == 4:
+            # Plant × cost centre pivot
+            pivot = result
+            summary = f"{len(pivot)} cells"
+            # Compute row/column totals
+            plant_totals = {p: 0.0 for p in PLANT_CODES}
+            cc_totals = {cc: 0.0 for cc in COST_CENTRES}
+            for (plant, cc), val in pivot.items():
+                plant_totals[plant] += val
+                cc_totals[cc] += val
+            details["cells"] = len(pivot)
+            details["plant_totals"] = {p: round(v, 2) for p, v in plant_totals.items()}
+            details["cc_totals"] = {cc: round(v, 2) for cc, v in cc_totals.items()}
+
+            print(f"  ✓ Completed in {elapsed_ms:,.1f} ms ({elapsed_ms / 1000:.1f}s)")
+            print(f"    Cells: {len(pivot)} ({len(PLANT_CODES)} plants × {len(COST_CENTRES)} centres)")
+            print(f"    Plant totals:")
+            for plant in PLANT_CODES:
+                print(f"      {plant:<14} ${plant_totals[plant]:>16,.2f}")
+            print(f"    Cost centre totals (top 5):")
+            sorted_cc = sorted(cc_totals.items(), key=lambda x: x[1], reverse=True)[:5]
+            for cc, val in sorted_cc:
+                print(f"      {cc:<18} ${val:>16,.2f}")
+
+        elif i == 5:
+            # Running total
+            running = result
+            summary = f"${running:,.2f}"
+            details["running_total"] = round(running, 2)
+
+            print(f"  ✓ Completed in {elapsed_ms:,.1f} ms ({elapsed_ms / 1000:.1f}s)")
+            print(f"    Final running total: ${running:>20,.2f}")
+
+        all_details[name] = details
 
         task_results.append({
             "name": name,
             "time_ms": round(elapsed_ms, 1),
             "summary": summary,
+            "rows_processed": n_rows,
+            "details": details,
         })
 
-    # Results
+    # ── Results Summary Table ────────────────────────────────────────────
     print(f"\n{'═' * 60}")
     print(f"  RESULTS SUMMARY")
     print(f"{'═' * 60}")
-    print(f"  {'Task':<35} {'Time':>10}")
-    print(f"  {'─' * 47}")
+    print(f"  {'Task':<35} {'Time':>10}  {'% Total':>8}")
+    print(f"  {'─' * 55}")
     for tr in task_results:
-        print(f"  {tr['name']:<35} {tr['time_ms']:>8,.1f} ms")
-    print(f"  {'─' * 47}")
+        pct = tr['time_ms'] / total_time * 100 if total_time > 0 else 0
+        print(f"  {tr['name']:<35} {tr['time_ms']:>8,.1f} ms  {pct:>6.1f}%")
+    print(f"  {'─' * 55}")
     print(f"  {'TOTAL':<35} {total_time:>8,.1f} ms")
-    print(f"  Throughput: {n_rows / (total_time / 1000):,.0f} rec/s (across all tasks)")
+    throughput = n_rows / (total_time / 1000) if total_time > 0 else 0
+    minutes = total_time / 60000
+    print(f"  Throughput: {throughput:,.0f} rec/s (across all tasks)")
+    print(f"  Wall time:  {total_time:,.1f} ms ({minutes:.1f}m)")
     print(f"{'═' * 60}")
 
+    # ── Validation Summary ───────────────────────────────────────────────
+    anomaly_task = all_details.get("Z-score anomaly detection", {})
+    top_supplier_task = all_details.get("Top 10 suppliers by spend", {})
+    running_total_task = all_details.get("Running total", {})
+
+    anomaly_count = anomaly_task.get("anomaly_count", 0)
+    anomaly_rate_pct = anomaly_task.get("anomaly_rate_pct", 0)
+    top_supplier = top_supplier_task.get("top_10", [{}])[0] if top_supplier_task.get("top_10") else {}
+    running_total = running_total_task.get("running_total", 0)
+
+    print(f"\n{'═' * 60}")
+    print(f"  VALIDATION SUMMARY")
+    print(f"{'─' * 60}")
+    print(f"    Run timestamp:     {machine['timestamp']}")
+    print(f"    Machine:           {machine['machine_name']}")
+    print(f"    CPU:               {machine['cpu_model']}")
+    print(f"    Python:            {machine['python_version']}")
+    print(f"    Data source:       {data_source}")
+    print(f"    Rows processed:    {n_rows:,} (per task)")
+    print(f"    Seed:              {RANDOM_SEED}")
+    print(f"    Z-threshold:       {Z_THRESHOLD}")
+    print(f"    Anomalies found:   {anomaly_count:,} ({anomaly_rate_pct:.4f}%)")
+    print(f"    Running total:     ${running_total:>20,.2f}")
+    if top_supplier:
+        print(f"    Top supplier:      {top_supplier.get('supplier_id', '?')} (${top_supplier.get('total', 0):,.2f})")
+    print(f"    Peak memory:       {mem_mb:.1f} MB")
+    print(f"    Total time:        {total_time:,.1f} ms ({minutes:.1f}m)")
+    print(f"    Throughput:        {throughput:,.0f} rec/s")
+    print(f"{'─' * 60}")
+
+    # ── Save JSON ────────────────────────────────────────────────────────
+    json_path = "benchmark_results_python.json"
     output = {
         "engine": "Python / Row-by-Row Loop (CPU)",
         "device": None,
         "total_time_ms": round(total_time, 1),
         "total_records": n_rows,
-        "throughput_rps": round(n_rows / (total_time / 1000), 0),
+        "throughput_rps": round(throughput, 0),
         "tasks": task_results,
-        "peak_memory_mb": round(df.memory_usage(deep=True).sum() / 1_048_576, 1),
+        "peak_memory_mb": round(mem_mb, 1),
+
+        # Validation metadata
+        "seed": RANDOM_SEED,
+        "z_threshold": Z_THRESHOLD,
+        "anomaly_rate_config": 0.002,
+        "data_source": data_source,
+        "data_load_time_ms": round(data_gen_time_ms, 1),
+        "json_generated_at": datetime.datetime.now().isoformat(),
+
+        # Machine metadata
         **machine,
     }
 
-    with open("benchmark_results_python.json", "w") as f:
+    with open(json_path, "w") as f:
         json.dump(output, f, indent=2)
 
-    print(f"\n  Results saved → benchmark_results_python.json")
+    json_size_kb = os.path.getsize(json_path) / 1024
+
+    print(f"\n    JSON saved:        {json_path} ({json_size_kb:.1f} KB)")
+    print(f"    JSON generated:    {output['json_generated_at']}")
+    print(f"{'═' * 60}")
+    print(f"\n  Done.")
 
 if __name__ == "__main__":
     main()

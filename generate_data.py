@@ -14,6 +14,7 @@ Usage:
 """
 
 import argparse
+import datetime
 import os
 import time
 
@@ -41,7 +42,7 @@ PLANT_CODES = ["GOLD_COAST", "SYDNEY", "MELBOURNE", "BRISBANE"]
 
 
 def generate(n_rows: int, output_path: str):
-    print(f"Generating {n_rows:,} rows (seed={RANDOM_SEED})...")
+    print(f"\n  Generating {n_rows:,} rows (seed={RANDOM_SEED})...")
     t0 = time.perf_counter()
 
     rng = np.random.default_rng(RANDOM_SEED)
@@ -65,14 +66,48 @@ def generate(n_rows: int, output_path: str):
     amounts[anomaly_idx] *= rng.choice([8.0, 12.0, -5.0, 15.0], size=n_anomalies)
 
     gen_time = time.perf_counter() - t0
-    print(f"  Generated in {gen_time:.1f}s")
 
-    # Map strings to integer IDs (matches Swift enum ordering)
+    # ── Data Characteristics ─────────────────────────────────────────────
+    unique_suppliers = len(np.unique(supplier_id))
+    cc_counts = pd.Series(cost_centre).value_counts()
+    plant_counts = pd.Series(plant_code).value_counts()
+
+    print(f"  Generated in {gen_time:.1f}s")
+    print()
+    print(f"  Data Characteristics:")
+    print(f"    Rows:              {n_rows:,}")
+    print(f"    Seed:              {RANDOM_SEED}")
+    print(f"    Cost centres:      {len(COST_CENTRES)} (uniform distribution)")
+    print(f"    Transaction types: {len(TRANSACTION_TYPES)}")
+    print(f"    Plant codes:       {len(PLANT_CODES)}")
+    print(f"    Unique suppliers:  {unique_suppliers:,} (range 1000–9998)")
+    print(f"    Anomalies:         {n_anomalies:,} injected ({ANOMALY_RATE * 100:.1f}%)")
+    print(f"    Multipliers:       [8x, 12x, -5x, 15x]")
+    print()
+    print(f"  Amount Statistics:")
+    print(f"    Min:               ${amounts.min():>20,.2f}")
+    print(f"    Max:               ${amounts.max():>20,.2f}")
+    print(f"    Mean:              ${amounts.mean():>20,.2f}")
+    print(f"    Sum:               ${amounts.sum():>20,.2f}")
+    print()
+    print(f"  Distribution by Cost Centre:")
+    for cc in COST_CENTRES:
+        count = int(cc_counts.get(cc, 0))
+        cc_amounts = amounts[cost_centre == cc]
+        print(f"    {cc:<18} {count:>10,} rows  mean=${cc_amounts.mean():>14,.2f}  base=${base_amounts[cc]:>12,.2f}")
+    print()
+    print(f"  Distribution by Plant:")
+    for plant in PLANT_CODES:
+        count = int(plant_counts.get(plant, 0))
+        pct = count / n_rows * 100
+        print(f"    {plant:<14} {count:>10,} rows ({pct:.1f}%)")
+
+    # ── Map to IDs and write CSV ─────────────────────────────────────────
     cc_to_id = {cc: i for i, cc in enumerate(COST_CENTRES)}
     txn_to_id = {t: i for i, t in enumerate(TRANSACTION_TYPES)}
     plant_to_id = {p: i for i, p in enumerate(PLANT_CODES)}
 
-    print(f"Writing CSV to {output_path}...")
+    print(f"\n  Writing CSV to {output_path}...")
     t0 = time.perf_counter()
 
     df = pd.DataFrame({
@@ -88,11 +123,22 @@ def generate(n_rows: int, output_path: str):
     file_mb = os.path.getsize(output_path) / 1_048_576
 
     print(f"  Written in {write_time:.1f}s")
-    print(f"  File size: {file_mb:.0f} MB")
-    print(f"  Rows: {n_rows:,}")
-    print(f"  Columns: amount, cost_centre_id, txn_type_id, supplier_id, plant_code_id")
-    print(f"\nDone. Use with:")
-    print(f"  python3 benchmark_python.py --from-csv {output_path}")
+
+    # ── Validation Checksums ─────────────────────────────────────────────
+    print()
+    print(f"  {'─' * 50}")
+    print(f"  Validation Checksums:")
+    print(f"    Row count:         {n_rows:,}")
+    print(f"    Amount sum:        ${amounts.sum():,.2f}")
+    print(f"    Amount mean:       ${amounts.mean():,.2f}")
+    print(f"    CSV file:          {output_path} ({file_mb:.0f} MB)")
+    print(f"    Seed:              {RANDOM_SEED}")
+    print(f"    Anomalies:         {n_anomalies:,} ({ANOMALY_RATE * 100:.1f}%)")
+    print(f"    Generated at:      {datetime.datetime.now().isoformat()}")
+    print(f"  {'─' * 50}")
+    print()
+    print(f"  Done. Use with:")
+    print(f"    python3 benchmark_python.py --from-csv {output_path}")
 
 
 def main():
@@ -103,6 +149,10 @@ def main():
     parser.add_argument("--output", "-o", type=str, default="benchmark_data.csv",
                         help="Output file path (default: benchmark_data.csv)")
     args = parser.parse_args()
+
+    print("=" * 60)
+    print("  Kiraa AI — Generate Benchmark Data")
+    print("=" * 60)
 
     generate(args.rows, args.output)
 

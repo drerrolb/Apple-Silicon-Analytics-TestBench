@@ -8,10 +8,7 @@
 #   1. Generate shared CSV (generate_data.py, deterministic seed=42)
 #   2. Run Python benchmark against that CSV
 #   3. Copy CSV + JSON results into iOS app bundle (Resources/)
-#
-# This guarantees both engines process the same transactions and produce
-# comparable results (same running totals, same anomaly counts, same top
-# suppliers).
+#   4. Print validation summary from JSON for verification
 #
 # Usage:
 #   ./run_benchmark.sh                    # Full pipeline (10M rows)
@@ -33,6 +30,7 @@ APP_RESOURCES="$SCRIPT_DIR/TestBench/Resources"
 SKIP_GENERATE=false
 ROWS=10000000
 BENCHMARK_ARGS=()
+prev_arg=""
 
 for arg in "$@"; do
     case "$arg" in
@@ -116,12 +114,81 @@ if [ -f "$CSV_FILE" ]; then
 fi
 
 echo ""
+
+# ── Step 5: Post-pipeline validation from JSON ──────────────────────────────
+
+if [ -f "$RESULTS_JSON" ]; then
+    JSON_SIZE=$(du -h "$RESULTS_JSON" | cut -f1)
+    CSV_SIZE="N/A"
+    if [ -f "$CSV_FILE" ]; then
+        CSV_SIZE=$(du -h "$CSV_FILE" | cut -f1)
+    fi
+
+    echo "══════════════════════════════════════════════════════════"
+    echo "  PIPELINE VALIDATION"
+    echo "──────────────────────────────────────────────────────────"
+
+    python3 -c "
+import json, sys
+with open('$RESULTS_JSON') as f:
+    d = json.load(f)
+
+ts = d.get('timestamp', d.get('json_generated_at', 'unknown'))
+total = d.get('total_time_ms', 0)
+records = d.get('total_records', 0)
+throughput = d.get('throughput_rps', 0)
+tasks = d.get('tasks', [])
+memory = d.get('peak_memory_mb', 0)
+seed = d.get('seed', '?')
+source = d.get('data_source', '?')
+machine = d.get('machine_name', '?')
+cpu = d.get('cpu_model', '?')
+
+# Extract key validation values from task details
+anomalies = 0
+running_total = 0
+top_supplier = '?'
+for t in tasks:
+    details = t.get('details', {})
+    if 'anomaly_count' in details:
+        anomalies = details['anomaly_count']
+    if 'running_total' in details:
+        running_total = details['running_total']
+    if 'top_10' in details and details['top_10']:
+        top_supplier = f\"{details['top_10'][0]['supplier_id']} (\${details['top_10'][0]['total']:,.2f})\"
+
+minutes = total / 60000
+
+print(f'    Timestamp:       {ts}')
+print(f'    Machine:         {machine}')
+print(f'    CPU:             {cpu}')
+print(f'    Data source:     {source}')
+print(f'    Seed:            {seed}')
+print(f'    Records:         {records:,}')
+print(f'    Total time:      {total:,.1f} ms ({minutes:.1f}m)')
+print(f'    Throughput:      {throughput:,.0f} rec/s')
+print(f'    Tasks:           {len(tasks)}')
+print(f'    Anomalies:       {anomalies:,}')
+print(f'    Running total:   \${running_total:,.2f}')
+print(f'    Top supplier:    {top_supplier}')
+print(f'    Peak memory:     {memory:.1f} MB')
+print()
+print(f'    Per-task breakdown:')
+for t in tasks:
+    pct = t['time_ms'] / total * 100 if total > 0 else 0
+    print(f'      {t[\"name\"]:<35} {t[\"time_ms\"]:>10,.1f} ms ({pct:.1f}%)')
+"
+
+    echo ""
+    echo "    JSON file:       $RESULTS_JSON ($JSON_SIZE)"
+    echo "    CSV file:        $CSV_FILE ($CSV_SIZE)"
+    echo "──────────────────────────────────────────────────────────"
+fi
+
+echo ""
 echo "══════════════════════════════════════════════════════════"
 echo "  Pipeline complete."
 echo ""
-echo "  Both engines will now use identical data:"
-echo "    - Python results: benchmark_results_python.json"
-echo "    - Shared data:    benchmark_data.csv"
-echo ""
+echo "  Both engines will now use identical data."
 echo "  Rebuild the Xcode project to include updated resources."
 echo "══════════════════════════════════════════════════════════"
