@@ -1,120 +1,88 @@
 import SwiftUI
 
-/// Main scrollable dashboard composing all benchmark sub-views.
+/// Dashboard tab — controls, speedup banner, engine comparison cards.
 ///
-/// Layout prioritises the speedup banner as the hero element immediately
-/// after controls. Animation views (wave, data flow) are compact and
-/// integrated around the engine cards rather than taking full sections.
+/// Particle field is provided by MainTabView (shared across tabs).
+/// Pipeline, architecture, and stream views have moved to the Pipeline tab.
 struct DashboardView: View {
     @Bindable var viewModel: BenchmarkViewModel
 
     var body: some View {
-        ZStack {
-            // Full-screen ambient particle field (behind all content)
-            ParticleFieldView(
-                isRunning: viewModel.isRunning,
-                progress: viewModel.progress,
-                isComplete: viewModel.bothComplete
-            )
-            .ignoresSafeArea()
+        ScrollView {
+            VStack(spacing: 0) {
 
-            ScrollView {
-                VStack(spacing: 0) {
+                // ── Header (compact) ────────────────────────────────
+                header
+                    .padding(.bottom, 20)
 
-                    // ── Header (compact) ────────────────────────────────
-                    header
-                        .padding(.bottom, 20)
+                // ── Controls ─────────────────────────────────────────
+                HStack(alignment: .center, spacing: 16) {
+                    BenchmarkControlView(viewModel: viewModel)
 
-                    // ── Controls ─────────────────────────────────────────
-                    HStack(alignment: .center, spacing: 16) {
-                        BenchmarkControlView(viewModel: viewModel)
-
-                        if viewModel.isRunning {
-                            ProgressRingView(
-                                progress: viewModel.progress,
-                                currentTask: viewModel.currentTask,
-                                isRunning: viewModel.isRunning
-                            )
-                            .transition(.scale.combined(with: .opacity))
-                        }
-                    }
-                    .animation(.spring(duration: 0.5), value: viewModel.isRunning)
-                    .padding(.bottom, 16)
-
-                    // ── GPU Wave (slim, always visible) ─────────────────
-                    GPUWaveView(
-                        isRunning: viewModel.isRunning,
-                        progress: viewModel.progress
-                    )
-                    .padding(.bottom, 16)
-
-                    // ── SPEEDUP BANNER (hero position) ──────────────────
-                    if let speedup = viewModel.speedup {
-                        SpeedupBannerView(speedup: speedup)
-                            .padding(.bottom, 20)
-                            .transition(.scale(scale: 0.9).combined(with: .opacity))
-                    }
-
-                    // ── Engine Results ───────────────────────────────────
-                    sectionLabel("Engine Results")
-
-                    HStack(alignment: .top, spacing: 2) {
-                        EngineCardView(
-                            type: .python,
-                            result: viewModel.pythonResult,
-                            otherResult: viewModel.gpuResult
-                        )
-                        EngineCardView(
-                            type: .swift,
-                            result: viewModel.gpuResult,
-                            otherResult: viewModel.pythonResult,
+                    if viewModel.isRunning {
+                        ProgressRingView(
+                            progress: viewModel.progress,
+                            currentTask: viewModel.currentTask,
                             isRunning: viewModel.isRunning
                         )
+                        .transition(.scale.combined(with: .opacity))
                     }
-                    .padding(.bottom, 20)
+                }
+                .animation(.spring(duration: 0.5), value: viewModel.isRunning)
+                .padding(.bottom, 16)
 
-                    // ── Throughput Chart ─────────────────────────────────
-                    if viewModel.bothComplete {
-                        sectionLabel("Throughput — Records per Second")
+                // ── GPU Wave (slim, always visible) ─────────────────
+                GPUWaveView(
+                    isRunning: viewModel.isRunning,
+                    progress: viewModel.progress
+                )
+                .padding(.bottom, 16)
 
-                        ThroughputChartView(
-                            pythonResult: viewModel.pythonResult,
-                            gpuResult: viewModel.gpuResult
-                        )
+                // ── SPEEDUP BANNER (hero position) ──────────────────
+                if let speedup = viewModel.speedup {
+                    SpeedupBannerView(speedup: speedup)
                         .padding(.bottom, 20)
-                        .transition(.opacity)
-                    }
+                        .transition(.scale(scale: 0.9).combined(with: .opacity))
+                }
 
-                    // ── Data Flow Pipeline (compact) ────────────────────
-                    sectionLabel("Transaction Pipeline")
+                // ── Engine Results ───────────────────────────────────
+                sectionLabel("Engine Results")
 
-                    DataFlowView(
-                        isRunning: viewModel.isRunning,
-                        progress: viewModel.progress
+                HStack(alignment: .top, spacing: 2) {
+                    EngineCardView(
+                        type: .python,
+                        result: viewModel.pythonResult,
+                        otherResult: viewModel.gpuResult
+                    )
+                    EngineCardView(
+                        type: .swift,
+                        result: viewModel.gpuResult,
+                        otherResult: viewModel.pythonResult,
+                        isRunning: viewModel.isRunning
+                    )
+                }
+                .padding(.bottom, 20)
+
+                // ── Throughput Chart ─────────────────────────────────
+                if viewModel.bothComplete {
+                    sectionLabel("Throughput — Records per Second")
+
+                    ThroughputChartView(
+                        pythonResult: viewModel.pythonResult,
+                        gpuResult: viewModel.gpuResult
                     )
                     .padding(.bottom, 20)
-
-                    // ── Architecture ─────────────────────────────────────
-                    sectionLabel("Why Apple Silicon Wins This Workload")
-
-                    ArchitectureGridView()
-                        .padding(.bottom, 20)
-
-                    // ── Stream Visualizer ────────────────────────────────
-                    sectionLabel("Simulated Live Transaction Stream")
-
-                    StreamVisualizerView()
-                        .padding(.bottom, 20)
-
-                    // ── Footer ───────────────────────────────────────────
-                    footer
+                    .transition(.opacity)
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, 32)
-                .padding(.bottom, 40)
+
+                // ── Footer ───────────────────────────────────────────
+                footer
             }
+            .padding(.horizontal, 20)
+            .padding(.top, 32)
+            .padding(.bottom, 40)
         }
-        .background(Color.appBackground)
+        .background(Color.appBackground.opacity(0.01))
         .animation(.easeInOut(duration: 0.5), value: viewModel.bothComplete)
         .animation(.spring(duration: 0.6), value: viewModel.speedup != nil)
     }

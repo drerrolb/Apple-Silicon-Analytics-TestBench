@@ -18,6 +18,9 @@ final class BenchmarkViewModel {
     var gpuResult: BenchmarkResult?
     var pythonResult: BenchmarkResult?
 
+    /// Detailed intermediate data from the GPU benchmark run (for charting).
+    var gpuData: BenchmarkData?
+
     var gpuAvailable: Bool = false
 
     /// Performance multiplier: Python total time ÷ GPU total time.
@@ -67,6 +70,7 @@ final class BenchmarkViewModel {
 
         isRunning = true
         gpuResult = nil
+        gpuData = nil
         progress = 0
         currentTask = "Generating data..."
         statusMessage = "Running..."
@@ -99,7 +103,7 @@ final class BenchmarkViewModel {
                 return
             }
 
-            let result = SwiftBenchmarkRunner.run(
+            let (result, data) = SwiftBenchmarkRunner.run(
                 transactions: transactions,
                 baselines: ccBaselines,
                 metalEngine: metalEngine
@@ -112,6 +116,7 @@ final class BenchmarkViewModel {
 
             await MainActor.run {
                 self.gpuResult = result
+                self.gpuData = data
                 self.progress = 1.0
                 self.isRunning = false
                 self.currentTask = ""

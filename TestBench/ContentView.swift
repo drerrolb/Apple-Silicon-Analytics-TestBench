@@ -1,10 +1,10 @@
 import SwiftUI
 
-/// Root view container. Creates the `BenchmarkViewModel` and presents the dashboard.
+/// Root view container. Creates the `BenchmarkViewModel` and presents the tab interface.
 struct ContentView: View {
     @State private var viewModel = BenchmarkViewModel()
 
     var body: some View {
-        DashboardView(viewModel: viewModel)
+        MainTabView(viewModel: viewModel)
     }
 }

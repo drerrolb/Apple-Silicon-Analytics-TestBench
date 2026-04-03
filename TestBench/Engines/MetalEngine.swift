@@ -146,14 +146,15 @@ enum SwiftBenchmarkRunner {
     ///   - baselines: Per-cost-centre mean/stdDev pairs for z-score computation.
     ///   - metalEngine: Optional GPU engine. Pass `nil` to force CPU-only scoring.
     ///   - onProgress: Called once before each task starts (tasks 1–5).
-    /// - Returns: A `BenchmarkResult` with per-task timings, total throughput,
-    ///   and estimated peak memory usage.
+    /// - Returns: A tuple of `(BenchmarkResult, BenchmarkData)` — the result
+    ///   contains per-task timings and aggregate throughput; the data contains
+    ///   the detailed intermediate values for charting.
     nonisolated static func run(
         transactions: [Transaction],
         baselines: [Baseline],
         metalEngine: MetalEngine?,
         onProgress: @Sendable (BenchmarkProgress) -> Void
-    ) -> BenchmarkResult {
+    ) -> (BenchmarkResult, BenchmarkData) {
         let n = transactions.count
         var tasks = [TaskResult]()
         let nCentres = Config.costCentres.count
@@ -248,7 +249,7 @@ enum SwiftBenchmarkRunner {
         let totalMs = tasks.reduce(0) { $0 + $1.timeMs }
         let txnMB = Double(n * MemoryLayout<Transaction>.stride) / 1_048_576
 
-        return BenchmarkResult(
+        let result = BenchmarkResult(
             engine:        "Swift + Metal (Apple Silicon)",
             device:        metalEngine?.deviceName,
             totalTimeMs:   totalMs,
@@ -257,6 +258,52 @@ enum SwiftBenchmarkRunner {
             peakMemoryMB:  txnMB,
             tasks:         tasks
         )
+
+        // Build detailed data for charting from the intermediate values
+        let ccTotalData = ccTotals.enumerated().map { i, total in
+            BenchmarkData.CostCentreTotal(name: Config.costCentres[i], total: total)
+        }
+
+        let supplierData = top10.enumerated().map { rank, entry in
+            BenchmarkData.SupplierTotal(supplierId: entry.key, total: entry.value, rank: rank + 1)
+        }
+
+        let baselineData = baselines.enumerated().map { i, bl in
+            BenchmarkData.BaselineStat(
+                name: i < Config.costCentres.count ? Config.costCentres[i] : "CC\(i)",
+                mean: bl.mean, stdDev: bl.stdDev
+            )
+        }
+
+        var pivotData = [BenchmarkData.PivotCell]()
+        var plantTotalData = [Double](repeating: 0, count: nPlants)
+        for p in 0 ..< nPlants {
+            for c in 0 ..< nCentres {
+                let val = pivot[p * nCentres + c]
+                pivotData.append(BenchmarkData.PivotCell(
+                    plant: Config.plantCodes[p],
+                    centre: Config.costCentres[c],
+                    total: val
+                ))
+                plantTotalData[p] += val
+            }
+        }
+
+        let plantTotals = plantTotalData.enumerated().map { i, total in
+            BenchmarkData.PlantTotal(name: Config.plantCodes[i], total: total)
+        }
+
+        let data = BenchmarkData(
+            costCentreTotals: ccTotalData,
+            topSuppliers: supplierData,
+            anomalyCount: totalAnomalies,
+            baselines: baselineData,
+            pivotValues: pivotData,
+            plantTotals: plantTotals,
+            runningTotal: runningTotal
+        )
+
+        return (result, data)
     }
 }
 

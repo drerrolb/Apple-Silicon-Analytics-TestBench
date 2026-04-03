@@ -1,39 +1,197 @@
 {
   "engine": "Python / Row-by-Row Loop (CPU)",
   "device": null,
-  "total_time_ms": 469733.8,
+  "total_time_ms": 509980.7,
   "total_records": 10000000,
-  "throughput_rps": 21289.0,
+  "throughput_rps": 19609.0,
   "tasks": [
     {
       "name": "Total by cost centre",
-      "time_ms": 94024.9,
-      "summary": "12 groups"
+      "time_ms": 101445.3,
+      "summary": "12 groups",
+      "rows_processed": 10000000,
+      "details": {
+        "rows_processed": 10000000,
+        "totals": {
+          "PACKAGING": 165122571442.22,
+          "SALES": 26051313303.74,
+          "UTILITIES": 180839807007.09,
+          "CAPEX": 326485773224.74,
+          "MARKETING": 146611011527.79,
+          "PROCUREMENT": 72650904774.79,
+          "LOGISTICS": 326496631540.43,
+          "MAINTENANCE": 182116615876.28,
+          "ADMIN": 85350308730.56,
+          "OVERHEADS": 141574146078.57,
+          "RAW_MATERIALS": 240004595732.61,
+          "LABOUR": 287729331171.18
+        },
+        "grand_total": 2181033010410.0
+      }
     },
     {
       "name": "Top 10 suppliers by spend",
-      "time_ms": 95349.0,
-      "summary": "top supplier: 1581"
+      "time_ms": 101842.1,
+      "summary": "top supplier: 1581",
+      "rows_processed": 10000000,
+      "details": {
+        "rows_processed": 10000000,
+        "top_10": [
+          {
+            "supplier_id": 1581,
+            "total": 276839963.99
+          },
+          {
+            "supplier_id": 1715,
+            "total": 276391566.19
+          },
+          {
+            "supplier_id": 1647,
+            "total": 276373615.17
+          },
+          {
+            "supplier_id": 4071,
+            "total": 274828358.91
+          },
+          {
+            "supplier_id": 3649,
+            "total": 274742589.39
+          },
+          {
+            "supplier_id": 3061,
+            "total": 274712764.95
+          },
+          {
+            "supplier_id": 6396,
+            "total": 274088744.78
+          },
+          {
+            "supplier_id": 5940,
+            "total": 274057140.54
+          },
+          {
+            "supplier_id": 1656,
+            "total": 273744244.6
+          },
+          {
+            "supplier_id": 1216,
+            "total": 273126609.48
+          }
+        ]
+      }
     },
     {
       "name": "Z-score anomaly detection",
-      "time_ms": 96532.8,
-      "summary": "20,000 anomalies"
+      "time_ms": 104305.9,
+      "summary": "20,000 anomalies",
+      "rows_processed": 10000000,
+      "details": {
+        "rows_processed": 10000000,
+        "anomaly_count": 20000,
+        "anomaly_rate_pct": 0.2,
+        "z_threshold": 3.5,
+        "baselines": {
+          "RAW_MATERIALS": {
+            "mean": 288192.38,
+            "std": 138456.19
+          },
+          "PACKAGING": {
+            "mean": 197877.89,
+            "std": 93383.61
+          },
+          "LOGISTICS": {
+            "mean": 391755.22,
+            "std": 184145.4
+          },
+          "LABOUR": {
+            "mean": 345405.9,
+            "std": 162713.71
+          },
+          "OVERHEADS": {
+            "mean": 170041.06,
+            "std": 79116.42
+          },
+          "CAPEX": {
+            "mean": 391093.66,
+            "std": 187418.81
+          },
+          "MAINTENANCE": {
+            "mean": 218345.87,
+            "std": 104969.07
+          },
+          "UTILITIES": {
+            "mean": 217046.4,
+            "std": 103393.31
+          },
+          "PROCUREMENT": {
+            "mean": 87241.0,
+            "std": 40848.51
+          },
+          "SALES": {
+            "mean": 31254.61,
+            "std": 14515.83
+          },
+          "MARKETING": {
+            "mean": 176128.79,
+            "std": 83065.82
+          },
+          "ADMIN": {
+            "mean": 102465.66,
+            "std": 48695.16
+          }
+        }
+      }
     },
     {
       "name": "Plant \u00d7 cost centre pivot",
-      "time_ms": 99482.9,
-      "summary": "48 groups"
+      "time_ms": 109262.0,
+      "summary": "48 cells",
+      "rows_processed": 10000000,
+      "details": {
+        "rows_processed": 10000000,
+        "cells": 48,
+        "plant_totals": {
+          "GOLD_COAST": 545724238573.32,
+          "SYDNEY": 544802308219.42,
+          "MELBOURNE": 544528081224.54,
+          "BRISBANE": 545978382392.74
+        },
+        "cc_totals": {
+          "RAW_MATERIALS": 240004595732.6,
+          "PACKAGING": 165122571442.22,
+          "LOGISTICS": 326496631540.43,
+          "LABOUR": 287729331171.18,
+          "OVERHEADS": 141574146078.57,
+          "CAPEX": 326485773224.77,
+          "MAINTENANCE": 182116615876.28,
+          "UTILITIES": 180839807007.08,
+          "PROCUREMENT": 72650904774.79,
+          "SALES": 26051313303.74,
+          "MARKETING": 146611011527.79,
+          "ADMIN": 85350308730.56
+        }
+      }
     },
     {
       "name": "Running total",
-      "time_ms": 84344.2,
-      "summary": "$2,181,033,010,410.45"
+      "time_ms": 93125.4,
+      "summary": "$2,181,033,010,410.45",
+      "rows_processed": 10000000,
+      "details": {
+        "rows_processed": 10000000,
+        "running_total": 2181033010410.45
+      }
     }
   ],
-  "peak_memory_mb": 1976.4,
-  "timestamp": "2026-04-02T17:48:10.702596",
-  "machine_name": "Mac.modem",
+  "peak_memory_mb": 1475.0,
+  "seed": 42,
+  "z_threshold": 3.5,
+  "anomaly_rate_config": 0.002,
+  "data_source": "benchmark_data.csv",
+  "data_load_time_ms": 1490.8,
+  "json_generated_at": "2026-04-03T17:47:31.268561",
+  "timestamp": "2026-04-03T17:38:58.237445",
+  "machine_name": "MacBook-Pro-4.local",
   "os_version": "Darwin 25.2.0",
   "cpu_model": "Apple M4 Max",
   "cpu_count": 16,

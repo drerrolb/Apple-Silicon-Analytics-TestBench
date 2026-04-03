@@ -32,11 +32,12 @@ final class BenchmarkRunnerTests: XCTestCase {
     }
 
     private func runBenchmark(transactions: [Transaction], baselines: [Baseline]) -> BenchmarkResult {
-        SwiftBenchmarkRunner.run(
+        let (result, _) = SwiftBenchmarkRunner.run(
             transactions: transactions,
             baselines: baselines,
             metalEngine: nil
         ) { _ in }
+        return result
     }
 
     func testRun_returns5Tasks() {
@@ -153,6 +154,7 @@ final class BenchmarkRunnerTests: XCTestCase {
         var progressCalls = [Int]()
 
         _ = SwiftBenchmarkRunner.run(
+            // Returns (BenchmarkResult, BenchmarkData) — discard both here
             transactions: txns,
             baselines: baselines,
             metalEngine: nil
