@@ -15,12 +15,14 @@ iOS benchmark app comparing Python/pandas CPU performance vs Swift/Metal GPU for
 
 ### App Structure (TestBench/)
 
-- **TestBenchApp.swift** — App entry point, forces dark mode
-- **ContentView.swift** — Thin shell creating `BenchmarkViewModel` and presenting `DashboardView`
+- **TestBenchApp.swift** — App entry point, forces dark mode, starts ambient music via `AudioManager`
+- **ContentView.swift** — Thin shell creating `BenchmarkViewModel` and presenting `MainTabView`
 
 ### Models/
 - **BenchmarkModels.swift** — Shared types: `Transaction` (24-byte GPU-aligned struct), `Baseline`, `ScoredResult`, `BenchmarkResult` (Codable), `Config` constants, `BenchmarkProgress`
-- **BenchmarkEngine.swift** — `BenchmarkEngine` protocol + timing helpers
+- **BenchmarkData.swift** — Detailed intermediate chart data: cost centre totals, supplier rankings, pivot cells, plant totals, anomaly count
+- **BenchmarkEngine.swift** — Timing helpers (`highResolutionTime()` using `CLOCK_UPTIME_RAW`)
+- **AudioManager.swift** — Singleton ambient music player. Loops `kiraa-10m-music.mp3` at 15% volume via `AVAudioPlayer`
 
 ### Engines/
 - **MetalEngine.swift** — Metal GPU compute pipeline. Uses `device.makeDefaultLibrary()` (not Bundle.module). Shared-mode buffers for zero-copy on Apple Silicon. Conforms to `BenchmarkEngine`.
@@ -33,19 +35,26 @@ iOS benchmark app comparing Python/pandas CPU performance vs Swift/Metal GPU for
 - **BenchmarkViewModel.swift** — `@Observable` class. Orchestrates data generation, Metal benchmark run (via `Task.detached`), Python JSON loading. Reports progress to UI.
 
 ### Views/
-- **DashboardView.swift** — Main scrollable dashboard composing all sub-views
+- **MainTabView.swift** — 5-tab container (Dashboard, Analysis, Explorer, Deep Dive, Pipeline) with floating action button that auto-rotates tabs every 5 seconds
+- **DashboardView.swift** — Main scrollable dashboard composing all sub-views, includes "Validate Locally" section with GitHub link
+- **TaskAnalysisView.swift** — Per-task timing comparison charts, speedup bars, time distribution
+- **DataExplorerView.swift** — Data exploration and detailed benchmark data views
+- **DeepDiveView.swift** — Detailed explanation of each benchmark task, side-by-side Python vs Swift approach, why Metal wins, head-to-head comparison table
+- **PipelineView.swift** — Architecture diagrams, GPU data flow animation, stream visualizer
 - **EngineCardView.swift** — Stats card for CPU or GPU engine with animated bar fills
 - **ThroughputChartView.swift** — Head-to-head horizontal bar chart
 - **SpeedupBannerView.swift** — Large speedup multiplier display
-- **ArchitectureGridView.swift** — 2x2 explanation grid (sequential vs parallel, copy-heavy vs zero-copy)
-- **StreamVisualizerView.swift** — Animated dot grid simulating live transaction stream
 - **BenchmarkControlView.swift** — Run button, progress bar, status
+- **ChartHelpers.swift** — Shared chart styling helpers (tabHeader, chartTitle, emptyState)
 
 ### Theme/
 - **AppTheme.swift** — Color palette (dark theme: cyan for Metal, amber for Python) and font definitions. All static properties must be `nonisolated` due to `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor`.
 
-### Root level
-- **benchmark_python.py** — Standalone Python benchmark script outputting `benchmark_results_python.json`
+### Root level scripts
+- **benchmark_python.py** — Standalone Python benchmark (pandas `df.iterrows()`) outputting `benchmark_results_python.json`
+- **generate_data.py** — Generates shared `benchmark_data.csv` (10M rows, seed=42)
+- **generate_data.sh** — Shell wrapper for generate_data.py (sets up venv)
+- **run_benchmark.sh** — Full pipeline: generate CSV → run Python benchmark → copy results to app bundle
 - **reference/** — Original reference implementations (not part of app build)
 
 ## Key Details

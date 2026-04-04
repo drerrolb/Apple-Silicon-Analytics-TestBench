@@ -1,23 +1,23 @@
 <p align="center">
   <strong>KIRAA AI</strong><br>
-  <em>Financial Anomaly Detection Benchmark</em>
+  <em>Apple Silicon Analytics TestBench</em>
 </p>
 
 # Python vs Swift + Metal GPU
 
-> **10 million ERP transactions. Five aggregation tasks. One takes 8 minutes. The other finishes in milliseconds.**
+> **10 million ERP transactions. Five aggregation tasks. One takes 8+ minutes. The other finishes in seconds.**
 
 This project benchmarks real-world financial data processing — the kind of row-level aggregation and scoring that happens in production ERP systems — across two fundamentally different execution models.
 
 | | Python (CPU) | Swift + Metal (GPU) |
 |---|---|---|
 | **Execution** | Row-by-row `for` loop through CPython interpreter | Compiled Swift + Metal GPU compute shaders |
-| **Total time** | ~470,000 ms (~8 min) | Milliseconds |
-| **Throughput** | ~21,000 rec/s | Millions of rec/s |
+| **Total time** | ~457,000 ms (~7.6 min) | ~5,000 ms (~5s) |
+| **Throughput** | ~22,000 rec/s | ~1,800,000 rec/s |
 | **Peak memory** | ~2,000 MB | ~230 MB |
 | **Anomalies found** | 20,000 | 20,000 (identical) |
 
-*Measured on Apple M4 Max with 10M rows. Both engines process the same shared CSV dataset and produce identical results.*
+*Measured on Apple M4 Max with 10M rows. Python results from `benchmark_python.py` using `df.iterrows()`. Swift results from on-device Metal GPU benchmark.*
 
 ---
 
@@ -37,82 +37,35 @@ Each task processes all 10 million rows independently and is timed separately.
 
 ---
 
-## Why We're Testing This
+## Why Swift + Metal Wins
 
-### The real-world problem
+### Compiled vs Interpreted
+Swift compiles to native ARM64 machine code. Python interprets bytecode through an eval loop with dynamic type checks on every operation.
 
-Enterprise financial systems process millions of transaction records daily. Common operations — aggregation, anomaly detection, pivot reporting — seem simple at the algorithmic level but become bottlenecks at scale. The question is: **how much does the execution model matter when the logic stays the same?**
+### Zero Object Allocation
+Swift iterates contiguous 24-byte structs in memory. Python's `iterrows()` creates a new pandas Series object per row — 10 million temporary objects for 10 million rows.
 
-### Python's structural limitation
+### GPU Parallelism
+Metal dispatches 1,000+ GPU threads simultaneously for z-score scoring. Python processes one transaction at a time through the GIL.
 
-Python is the dominant language for data processing, but its interpreter imposes a hard floor on per-record cost. When business logic requires:
+### Memory Efficiency
+Swift uses packed structs with shared-mode Metal buffers (zero-copy on Apple Silicon). Python DataFrames store each column as a separate numpy array with per-element object overhead.
 
-- **Dictionary lookups** per record (`baselines[cost_centre]`)
-- **Conditional branching** (`if abs(z) > threshold`)
-- **Object creation** overhead (each `iterrows()` yields a new Series)
-- **GIL contention** (no thread-level parallelism possible)
-
-...you pay the full interpreter overhead on every single row. Vectorized pandas/numpy can bypass this for simple array operations, but the moment you need per-row conditionals or lookups, you're back in the interpreter loop.
-
-### What Metal GPU offers
-
-Apple Silicon's unified memory architecture eliminates the traditional CPU-to-GPU data transfer bottleneck:
-
-- **Zero-copy buffers** — CPU and GPU share the same physical memory address
-- **Massive parallelism** — thousands of GPU threads score transactions simultaneously
-- **No interpreter** — Metal shader code compiles to native GPU instructions
-- **Sub-microsecond dispatch** — command buffer overhead is negligible
-
----
-
-## What It Shows
-
-The benchmark demonstrates that **identical scoring logic** can run orders of magnitude faster when moved from an interpreted row-by-row loop to compiled parallel execution on GPU hardware.
-
-This isn't a contrived microbenchmark. The five tasks represent real financial operations:
-- Departmental spend aggregation (tasks 1, 4)
-- Supplier analysis (task 2)
-- Statistical anomaly detection (task 3)
-- Running totals for reconciliation (task 5)
-
-The Python implementation uses `df.iterrows()` — the standard approach when business rules can't be vectorized. The Swift + Metal implementation runs the same logic with compiled code and GPU acceleration where it matters most (z-score scoring across millions of rows).
-
----
-
-## iOS App
-
-The benchmark ships as a native iOS app with a pink/purple neon Kiraa-branded dark theme, animated particle effects, and ambient background music.
-
-### Visual Effects
-
-- **Particle field** — full-screen floating particles that react to benchmark state: slow drift when idle, fast neon streams during runs, burst celebration on completion
-- **GPU wave** — triple-layered sine waveform that pulses with processing intensity
-- **Data flow pipeline** — animated dot stream showing transactions flowing through the GPU scoring zone, with anomalies glowing red after detection
-- **Progress ring** — circular gauge with gradient sweep, glowing tip, and rotating ambient ring during runs
-- **Stream visualizer** — 500-cell dot grid simulating live transaction scanning with anomaly flags
-
-### Speedup Banner
-
-The hero element of the dashboard — a large **~96x** speedup multiplier that pops in dramatically when both benchmark results are available. Positioned immediately after the controls so it's the first thing visible after a run.
-
-### Ambient Audio
-
-`kiraa-10m-music.mp3` plays quietly on loop (15% volume, ambient audio session) while the app is running.
+### Static Dispatch
+Swift resolves all method calls at compile time. Python looks up every attribute, method, and operator at runtime through `__getattr__` and descriptor protocols.
 
 ---
 
 ## The Scoring Logic (Task 3)
 
-Both engines compute identical z-scores for anomaly detection:
+Both engines compute identical z-scores:
 
 ```
 z = (amount - cost_centre_mean) / cost_centre_std
 is_anomaly = |z| > 3.5
 ```
 
-Each of 12 cost centres has its own baseline mean and standard deviation, computed empirically from the dataset with Bessel's correction (ddof=1).
-
-**Python** scores each row in a `for` loop, hitting a dictionary lookup per record:
+**Python** scores each row in a `for` loop:
 ```python
 for _, row in df.iterrows():
     bl = baselines[row["cost_centre"]]
@@ -121,7 +74,7 @@ for _, row in df.iterrows():
         anomaly_count += 1
 ```
 
-**Metal** dispatches one GPU thread per transaction — all scored in parallel:
+**Metal** dispatches one GPU thread per transaction:
 ```metal
 kernel void scoreTransactions(..., uint gid [[ thread_position_in_grid ]]) {
     Transaction txn = transactions[gid];
@@ -133,15 +86,73 @@ kernel void scoreTransactions(..., uint gid [[ thread_position_in_grid ]]) {
 
 ---
 
-## Data Pipeline
+## Quick Start
 
-A single shared CSV ensures both engines process identical data:
+### 1. Run the Python benchmark locally
 
 ```bash
-./run_benchmark.sh    # Generate CSV → Python benchmark → copy to app bundle
+pip install pandas numpy tqdm
+python3 benchmark_python.py
 ```
 
-This generates `benchmark_data.csv` (10M rows, seed=42), runs the Python benchmark against it, and copies both the CSV and results JSON into the iOS app bundle. Swift loads the same CSV at runtime.
+Results are saved to `benchmark_results_python.json`.
+
+### 2. Run the full pipeline (generate shared data + benchmark)
+
+```bash
+./run_benchmark.sh              # Generate CSV, run Python benchmark, copy to app bundle
+```
+
+### 3. Run the iOS app
+
+1. Open `TestBench.xcodeproj` in Xcode
+2. Select an iPhone or iPad simulator (Apple Silicon required)
+3. Build and run
+4. Python results load from bundled JSON
+5. Tap **Run Benchmark** to run Swift + Metal on-device
+6. Speedup multiplier appears with side-by-side comparison
+
+### Alternative workflows
+
+```bash
+./generate_data.sh                           # Just generate CSV
+./run_benchmark.sh --skip-generate           # Run Python on existing CSV
+./run_benchmark.sh --verbose --rows 100000   # Quick verbose run
+```
+
+---
+
+## iOS App
+
+The benchmark ships as a native iOS app with five tabs:
+
+| Tab | Purpose |
+|-----|---------|
+| **Dashboard** | Controls, speedup banner, engine result cards, throughput chart, local validation instructions |
+| **Analysis** | Per-task timing comparison charts, speedup-per-task bars, time distribution |
+| **Explorer** | Data exploration and detailed benchmark data views |
+| **Deep Dive** | Detailed explanation of each task, side-by-side Python vs Swift approach, why Metal wins |
+| **Pipeline** | Architecture diagrams, GPU data flow animation, stream visualizer |
+
+### Features
+
+- **Auto-play** — floating action button rotates through all tabs every 5 seconds (tap to start/stop)
+- **Ambient music** — `kiraa-10m-music.mp3` loops quietly in the background
+- **Particle field** — floating particles that react to benchmark state
+- **GPU wave** — triple-layered sine waveform pulsing with processing intensity
+- **Data flow pipeline** — animated dot stream showing transactions through GPU scoring
+- **Progress ring** — circular gauge with gradient sweep during runs
+- **Stream visualizer** — 500-cell dot grid simulating live transaction scanning
+
+---
+
+## Data Pipeline
+
+```bash
+./run_benchmark.sh    # Generate CSV -> Python benchmark -> copy to app bundle
+```
+
+Generates `benchmark_data.csv` (10M rows, seed=42), runs the Python benchmark, and copies both the CSV and results JSON into the iOS app bundle. Swift loads the same CSV at runtime.
 
 ### Data Format
 
@@ -155,36 +166,12 @@ This generates `benchmark_data.csv` (10M rows, seed=42), runs the Python benchma
 
 ---
 
-## Quick Start
-
-### 1. Run the full pipeline (recommended)
-
-```bash
-./run_benchmark.sh              # Generate CSV → Python benchmark → copy to app bundle
-```
-
-### 2. Run the Swift + Metal benchmark
-
-1. Open `TestBench.xcodeproj` in Xcode
-2. Select an iPhone/iPad simulator (Apple Silicon required)
-3. Build and run
-4. Python results load from bundled JSON, Swift loads the shared CSV
-5. Tap **Run Benchmark** — Metal GPU scoring runs on-device
-6. Speedup multiplier appears with side-by-side comparison
-
-### Alternative: generate data separately
-
-```bash
-./generate_data.sh                           # Just generate CSV (copies to app bundle)
-./run_benchmark.sh --skip-generate           # Run Python on existing CSV
-./run_benchmark.sh --verbose --rows 100000   # Quick verbose run with smaller dataset
-```
-
----
-
 ## Test Suite
 
-70 unit tests covering all core logic:
+```bash
+xcodebuild test -project TestBench.xcodeproj -scheme TestBench \
+  -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone 17 Pro'
+```
 
 | Test Class | Tests | Coverage |
 |-----------|-------|----------|
@@ -198,66 +185,61 @@ This generates `benchmark_data.csv` (10M rows, seed=42), runs the Python benchma
 | BenchmarkModelsTests | 4 | JSON decode/encode, snake_case keys, nullable fields |
 | BenchmarkViewModelTests | 8 | State machine, speedup calc, guard conditions |
 
-```bash
-xcodebuild test -project TestBench.xcodeproj -scheme TestBench \
-  -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone 17 Pro'
-```
-
 ---
 
 ## Project Structure
 
 ```
 TestBench/
+├── benchmark_python.py          # Python benchmark (standalone CLI, df.iterrows())
 ├── generate_data.py             # Generate benchmark_data.csv (10M rows)
 ├── generate_data.sh             # Shell wrapper (generates + copies to app)
-├── benchmark_python.py          # Python benchmark (standalone CLI)
-├── run_benchmark.sh             # Full pipeline: generate → benchmark → bundle
+├── run_benchmark.sh             # Full pipeline: generate -> benchmark -> bundle
 ├── benchmark_results_python.json
 │
 ├── TestBench/                   # iOS app (SwiftUI + Metal)
-│   ├── TestBenchApp.swift       # Entry point, dark mode, ambient music
-│   ├── ContentView.swift        # Root view
+│   ├── TestBenchApp.swift
+│   ├── ContentView.swift
 │   ├── Models/
 │   │   ├── BenchmarkModels.swift    # Transaction, Baseline, Config, results
+│   │   ├── BenchmarkData.swift      # Detailed chart data structures
 │   │   ├── BenchmarkEngine.swift    # High-resolution timing
 │   │   └── AudioManager.swift       # Ambient music playback
 │   ├── Engines/
-│   │   ├── MetalEngine.swift        # Metal GPU compute + benchmark runner
+│   │   ├── MetalEngine.swift        # Metal GPU compute + SwiftBenchmarkRunner
 │   │   └── DataGenerator.swift      # Data generation + CSV loading
 │   ├── Shaders/
 │   │   └── AnomalyScoring.metal     # GPU z-score kernel
 │   ├── ViewModels/
 │   │   └── BenchmarkViewModel.swift # Orchestrates runs, loads Python JSON
 │   ├── Views/
-│   │   ├── DashboardView.swift      # Main dashboard layout
+│   │   ├── MainTabView.swift        # 5-tab container
+│   │   ├── DashboardView.swift      # Dashboard with controls + validation info
+│   │   ├── TaskAnalysisView.swift   # Per-task timing charts
+│   │   ├── DataExplorerView.swift   # Data exploration
+│   │   ├── DeepDiveView.swift       # Task explanations + why Metal wins
+│   │   ├── PipelineView.swift       # Architecture + animations
 │   │   ├── EngineCardView.swift     # Per-engine stats card
 │   │   ├── SpeedupBannerView.swift  # Hero speedup multiplier
 │   │   ├── ThroughputChartView.swift
-│   │   ├── ParticleFieldView.swift  # Ambient particle effects
-│   │   ├── GPUWaveView.swift        # Processing waveform
-│   │   ├── DataFlowView.swift       # Transaction flow pipeline
-│   │   ├── ProgressRingView.swift   # Circular progress gauge
+│   │   ├── BenchmarkControlView.swift
+│   │   ├── ChartHelpers.swift       # Shared chart styling
+│   │   ├── ParticleFieldView.swift
+│   │   ├── GPUWaveView.swift
+│   │   ├── DataFlowView.swift
+│   │   ├── ProgressRingView.swift
 │   │   ├── ArchitectureGridView.swift
-│   │   ├── StreamVisualizerView.swift
-│   │   └── BenchmarkControlView.swift
+│   │   └── StreamVisualizerView.swift
 │   ├── Theme/
-│   │   └── AppTheme.swift           # Pink/purple neon Kiraa palette
+│   │   └── AppTheme.swift           # Pink/purple neon palette + fonts
 │   └── Resources/
 │       ├── benchmark_results_python.json
-│       └── kiraa-10m-music.mp3      # Ambient background music
+│       └── kiraa-10m-music.mp3
 │
-├── TestBenchTests/              # 70 unit tests
-│   ├── TestBenchTests.swift
-│   ├── SeededRNGTests.swift
-│   ├── DataGeneratorTests.swift
-│   ├── ZScoreTests.swift
-│   ├── BenchmarkRunnerTests.swift
-│   ├── BenchmarkModelsTests.swift
-│   └── BenchmarkViewModelTests.swift
-│
-├── TestBench.xcodeproj/
-└── reference/                   # Original reference implementations
+├── TestBenchTests/              # Unit tests
+├── TestBenchUITests/            # UI tests
+├── reference/                   # Original reference implementations
+└── TestBench.xcodeproj/
 ```
 
 ## Requirements

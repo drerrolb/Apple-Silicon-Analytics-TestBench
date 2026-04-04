@@ -1,13 +1,13 @@
 {
   "engine": "Python / Row-by-Row Loop (CPU)",
   "device": null,
-  "total_time_ms": 509980.7,
+  "total_time_ms": 457395.0,
   "total_records": 10000000,
-  "throughput_rps": 19609.0,
+  "throughput_rps": 21863.0,
   "tasks": [
     {
       "name": "Total by cost centre",
-      "time_ms": 101445.3,
+      "time_ms": 90748.4,
       "summary": "12 groups",
       "rows_processed": 10000000,
       "details": {
@@ -31,7 +31,7 @@
     },
     {
       "name": "Top 10 suppliers by spend",
-      "time_ms": 101842.1,
+      "time_ms": 89814.1,
       "summary": "top supplier: 1581",
       "rows_processed": 10000000,
       "details": {
@@ -82,7 +82,7 @@
     },
     {
       "name": "Z-score anomaly detection",
-      "time_ms": 104305.9,
+      "time_ms": 95969.6,
       "summary": "20,000 anomalies",
       "rows_processed": 10000000,
       "details": {
@@ -144,7 +144,7 @@
     },
     {
       "name": "Plant \u00d7 cost centre pivot",
-      "time_ms": 109262.0,
+      "time_ms": 98704.5,
       "summary": "48 cells",
       "rows_processed": 10000000,
       "details": {
@@ -174,7 +174,7 @@
     },
     {
       "name": "Running total",
-      "time_ms": 93125.4,
+      "time_ms": 82158.5,
       "summary": "$2,181,033,010,410.45",
       "rows_processed": 10000000,
       "details": {
@@ -183,14 +183,14 @@
       }
     }
   ],
-  "peak_memory_mb": 1475.0,
+  "peak_memory_mb": 1976.4,
   "seed": 42,
   "z_threshold": 3.5,
   "anomaly_rate_config": 0.002,
-  "data_source": "benchmark_data.csv",
-  "data_load_time_ms": 1490.8,
-  "json_generated_at": "2026-04-03T17:47:31.268561",
-  "timestamp": "2026-04-03T17:38:58.237445",
+  "data_source": "in-memory (generated)",
+  "data_load_time_ms": 9985.9,
+  "json_generated_at": "2026-04-04T15:03:43.663951",
+  "timestamp": "2026-04-04T14:55:54.185374",
   "machine_name": "MacBook-Pro-4.local",
   "os_version": "Darwin 25.2.0",
   "cpu_model": "Apple M4 Max",

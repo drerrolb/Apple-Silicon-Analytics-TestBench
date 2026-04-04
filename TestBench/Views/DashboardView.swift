@@ -8,7 +8,7 @@ struct DashboardView: View {
     @Bindable var viewModel: BenchmarkViewModel
 
     var body: some View {
-        ScrollView {
+        ScrollView(showsIndicators: true) {
             VStack(spacing: 0) {
 
                 // ── Header (compact) ────────────────────────────────
@@ -74,6 +74,10 @@ struct DashboardView: View {
                     .padding(.bottom, 20)
                     .transition(.opacity)
                 }
+
+                // ── Validation Info ──────────────────────────────────
+                validationInfo
+                    .padding(.bottom, 20)
 
                 // ── Footer ───────────────────────────────────────────
                 footer
@@ -159,6 +163,69 @@ struct DashboardView: View {
                 .frame(height: 1)
         }
         .padding(.bottom, 10)
+    }
+
+    private var validationInfo: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sectionLabel("Validate Locally")
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Run the Python benchmark on your Mac to verify results independently:")
+                    .font(.monoCaption)
+                    .foregroundStyle(Color.bodyText)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("1. Clone the repository")
+                        .font(.monoCaption)
+                        .foregroundStyle(Color.dimText)
+                    Text("git clone https://github.com/drerrolb/Apple-Silicon-Analytics-TestBench.git")
+                        .font(.monoCaption)
+                        .foregroundStyle(Color.pythonAmber)
+                        .textSelection(.enabled)
+                }
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("2. Install dependencies")
+                        .font(.monoCaption)
+                        .foregroundStyle(Color.dimText)
+                    Text("pip install pandas numpy tqdm")
+                        .font(.monoCaption)
+                        .foregroundStyle(Color.pythonAmber)
+                        .textSelection(.enabled)
+                }
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("3. Run the benchmark")
+                        .font(.monoCaption)
+                        .foregroundStyle(Color.dimText)
+                    Text("python3 benchmark_python.py")
+                        .font(.monoCaption)
+                        .foregroundStyle(Color.pythonAmber)
+                        .textSelection(.enabled)
+                }
+
+                Text("Results are saved to benchmark_results_python.json and can be compared with the values shown above.")
+                    .font(.monoCaption)
+                    .foregroundStyle(Color.mutedText)
+                    .padding(.top, 4)
+
+                Link(destination: URL(string: "https://github.com/drerrolb/Apple-Silicon-Analytics-TestBench/blob/main/benchmark_python.py")!) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "link")
+                        Text("View benchmark_python.py on GitHub")
+                    }
+                    .font(.monoCaption)
+                    .foregroundStyle(Color.swiftCyan)
+                }
+                .padding(.top, 4)
+            }
+            .padding(16)
+            .background(Color.surface)
+            .overlay {
+                RoundedRectangle(cornerRadius: 0)
+                    .stroke(Color.border, lineWidth: 1)
+            }
+        }
     }
 
     private var footer: some View {
