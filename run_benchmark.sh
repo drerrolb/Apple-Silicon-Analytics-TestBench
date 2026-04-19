@@ -91,7 +91,7 @@ echo "  Running Python benchmark on shared CSV..."
 echo "══════════════════════════════════════════════════════════"
 echo ""
 
-python3 "$SCRIPT_DIR/benchmark_python.py" --from-csv "$CSV_FILE" "${BENCHMARK_ARGS[@]}"
+python3 "$SCRIPT_DIR/benchmark_python.py" --from-csv "$CSV_FILE" ${BENCHMARK_ARGS[@]+"${BENCHMARK_ARGS[@]}"}
 
 echo ""
 
