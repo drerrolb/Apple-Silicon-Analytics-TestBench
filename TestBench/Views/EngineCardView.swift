@@ -36,6 +36,9 @@ struct EngineCardView: View {
     let result: BenchmarkResult?
     let otherResult: BenchmarkResult?
     var isRunning: Bool = false
+    @Environment(\.horizontalSizeClass) private var hSizeClass
+
+    private var isCompact: Bool { hSizeClass == .compact }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -47,7 +50,7 @@ struct EngineCardView: View {
                 .foregroundStyle(type.accent)
 
             Text(type.title)
-                .font(.displayMed)
+                .font(isCompact ? .system(size: 22, weight: .bold, design: .rounded) : .displayMed)
                 .foregroundStyle(Color.whiteText)
 
             // Machine info

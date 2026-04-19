@@ -6,6 +6,9 @@ import SwiftUI
 /// Pipeline, architecture, and stream views have moved to the Pipeline tab.
 struct DashboardView: View {
     @Bindable var viewModel: BenchmarkViewModel
+    @Environment(\.horizontalSizeClass) private var hSizeClass
+
+    private var isCompact: Bool { hSizeClass == .compact }
 
     var body: some View {
         ScrollView(showsIndicators: true) {
@@ -16,16 +19,33 @@ struct DashboardView: View {
                     .padding(.bottom, 20)
 
                 // ── Controls ─────────────────────────────────────────
-                HStack(alignment: .center, spacing: 16) {
-                    BenchmarkControlView(viewModel: viewModel)
+                Group {
+                    if isCompact {
+                        VStack(alignment: .center, spacing: 16) {
+                            BenchmarkControlView(viewModel: viewModel)
 
-                    if viewModel.isRunning {
-                        ProgressRingView(
-                            progress: viewModel.progress,
-                            currentTask: viewModel.currentTask,
-                            isRunning: viewModel.isRunning
-                        )
-                        .transition(.scale.combined(with: .opacity))
+                            if viewModel.isRunning {
+                                ProgressRingView(
+                                    progress: viewModel.progress,
+                                    currentTask: viewModel.currentTask,
+                                    isRunning: viewModel.isRunning
+                                )
+                                .transition(.scale.combined(with: .opacity))
+                            }
+                        }
+                    } else {
+                        HStack(alignment: .center, spacing: 16) {
+                            BenchmarkControlView(viewModel: viewModel)
+
+                            if viewModel.isRunning {
+                                ProgressRingView(
+                                    progress: viewModel.progress,
+                                    currentTask: viewModel.currentTask,
+                                    isRunning: viewModel.isRunning
+                                )
+                                .transition(.scale.combined(with: .opacity))
+                            }
+                        }
                     }
                 }
                 .animation(.spring(duration: 0.5), value: viewModel.isRunning)
@@ -48,18 +68,36 @@ struct DashboardView: View {
                 // ── Engine Results ───────────────────────────────────
                 sectionLabel("Engine Results")
 
-                HStack(alignment: .top, spacing: 2) {
-                    EngineCardView(
-                        type: .python,
-                        result: viewModel.pythonResult,
-                        otherResult: viewModel.gpuResult
-                    )
-                    EngineCardView(
-                        type: .swift,
-                        result: viewModel.gpuResult,
-                        otherResult: viewModel.pythonResult,
-                        isRunning: viewModel.isRunning
-                    )
+                Group {
+                    if isCompact {
+                        VStack(spacing: 12) {
+                            EngineCardView(
+                                type: .python,
+                                result: viewModel.pythonResult,
+                                otherResult: viewModel.gpuResult
+                            )
+                            EngineCardView(
+                                type: .swift,
+                                result: viewModel.gpuResult,
+                                otherResult: viewModel.pythonResult,
+                                isRunning: viewModel.isRunning
+                            )
+                        }
+                    } else {
+                        HStack(alignment: .top, spacing: 2) {
+                            EngineCardView(
+                                type: .python,
+                                result: viewModel.pythonResult,
+                                otherResult: viewModel.gpuResult
+                            )
+                            EngineCardView(
+                                type: .swift,
+                                result: viewModel.gpuResult,
+                                otherResult: viewModel.pythonResult,
+                                isRunning: viewModel.isRunning
+                            )
+                        }
+                    }
                 }
                 .padding(.bottom, 20)
 
@@ -95,21 +133,48 @@ struct DashboardView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .center) {
-                VStack(alignment: .leading, spacing: 0) {
-                    Text("PYTHON")
-                        .font(.system(size: 36, weight: .black, design: .rounded))
-                        .foregroundStyle(Color.whiteText)
-                    Text("VS SWIFT")
-                        .font(.system(size: 36, weight: .black, design: .rounded))
-                        .foregroundStyle(Color.swiftCyan)
+            if isCompact {
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(alignment: .top) {
+                        VStack(alignment: .leading, spacing: 0) {
+                            Text("PYTHON")
+                                .font(.system(size: 28, weight: .black, design: .rounded))
+                                .foregroundStyle(Color.whiteText)
+                            Text("VS SWIFT")
+                                .font(.system(size: 28, weight: .black, design: .rounded))
+                                .foregroundStyle(Color.swiftCyan)
+                        }
+
+                        Spacer()
+
+                        KiraaLogoMark(size: 40)
+                    }
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        chipLabel("Python · Row-by-Row · CPU", color: .pythonAmber)
+                        chipLabel("Swift · Metal · Apple Silicon GPU", color: .swiftCyan)
+                    }
                 }
+            } else {
+                HStack(alignment: .center) {
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text("PYTHON")
+                            .font(.system(size: 36, weight: .black, design: .rounded))
+                            .foregroundStyle(Color.whiteText)
+                        Text("VS SWIFT")
+                            .font(.system(size: 36, weight: .black, design: .rounded))
+                            .foregroundStyle(Color.swiftCyan)
+                    }
 
-                Spacer()
+                    Spacer()
 
-                VStack(alignment: .trailing, spacing: 6) {
-                    chipLabel("Python · Row-by-Row · CPU", color: .pythonAmber)
-                    chipLabel("Swift · Metal · Apple Silicon GPU", color: .swiftCyan)
+                    VStack(alignment: .trailing, spacing: 6) {
+                        chipLabel("Python · Row-by-Row · CPU", color: .pythonAmber)
+                        chipLabel("Swift · Metal · Apple Silicon GPU", color: .swiftCyan)
+                    }
+
+                    KiraaLogoMark(size: 48)
+                        .padding(.leading, 12)
                 }
             }
 
@@ -230,7 +295,7 @@ struct DashboardView: View {
 
     private var footer: some View {
         HStack {
-            Text("Kiraa AI Pty Ltd · Gold Coast QLD · Benchmark v1.0")
+            Text("Kiraa AI Pty Ltd · Gold Coast QLD · Benchmark v1.03")
                 .font(.monoCaption)
                 .foregroundStyle(Color.mutedText)
 

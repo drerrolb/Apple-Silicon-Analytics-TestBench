@@ -4,10 +4,13 @@ import SwiftUI
 /// Compares Python (interpreter loop, DataFrame copies) vs Swift+Metal
 /// (compiled iteration, parallel GPU z-score with zero-copy unified memory).
 struct ArchitectureGridView: View {
-    private let columns = [
-        GridItem(.flexible(), spacing: 2),
-        GridItem(.flexible(), spacing: 2)
-    ]
+    @Environment(\.horizontalSizeClass) private var hSizeClass
+
+    private var columns: [GridItem] {
+        hSizeClass == .compact
+            ? [GridItem(.flexible(), spacing: 2)]
+            : [GridItem(.flexible(), spacing: 2), GridItem(.flexible(), spacing: 2)]
+    }
 
     var body: some View {
         LazyVGrid(columns: columns, spacing: 2) {

@@ -136,7 +136,8 @@ The benchmark ships as a native iOS app with five tabs:
 
 ### Features
 
-- **Kiraa-branded app icon** — shared with the Kiraa engine product family
+- **Kiraa-branded app icon + logo** — the Kiraa mark appears on every tab header, and shares artwork with the Kiraa engine product family
+- **Responsive layout** — iPhone (compact width) stacks multi-column content, scales hero typography, and resizes charts; iPad and macOS keep their wider layouts unchanged
 - **Auto-play** — floating action button rotates through all tabs every 5 seconds (tap to start/stop)
 - **Ambient music** — `kiraa-10m-music.mp3` loops quietly in the background
 - **Particle field** — floating particles that react to benchmark state

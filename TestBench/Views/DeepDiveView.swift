@@ -4,6 +4,9 @@ import SwiftUI
 /// and side-by-side comparison of how each engine approaches the workload.
 struct DeepDiveView: View {
     @Bindable var viewModel: BenchmarkViewModel
+    @Environment(\.horizontalSizeClass) private var hSizeClass
+
+    private var isCompact: Bool { hSizeClass == .compact }
 
     var body: some View {
         ScrollView(showsIndicators: true) {
@@ -154,21 +157,41 @@ struct DeepDiveView: View {
                 .foregroundStyle(Color.bodyText)
                 .fixedSize(horizontal: false, vertical: true)
 
-            // Side-by-side approaches
-            HStack(alignment: .top, spacing: 8) {
-                approachBox(
-                    engine: "Python",
-                    text: pythonApproach,
-                    accent: .pythonAmber,
-                    time: pythonTaskTime(index: number - 1)
-                )
+            // Side-by-side approaches (stack on iPhone)
+            Group {
+                if isCompact {
+                    VStack(alignment: .leading, spacing: 8) {
+                        approachBox(
+                            engine: "Python",
+                            text: pythonApproach,
+                            accent: .pythonAmber,
+                            time: pythonTaskTime(index: number - 1)
+                        )
 
-                approachBox(
-                    engine: "Swift+Metal",
-                    text: swiftApproach,
-                    accent: .swiftCyan,
-                    time: swiftTaskTime(index: number - 1)
-                )
+                        approachBox(
+                            engine: "Swift+Metal",
+                            text: swiftApproach,
+                            accent: .swiftCyan,
+                            time: swiftTaskTime(index: number - 1)
+                        )
+                    }
+                } else {
+                    HStack(alignment: .top, spacing: 8) {
+                        approachBox(
+                            engine: "Python",
+                            text: pythonApproach,
+                            accent: .pythonAmber,
+                            time: pythonTaskTime(index: number - 1)
+                        )
+
+                        approachBox(
+                            engine: "Swift+Metal",
+                            text: swiftApproach,
+                            accent: .swiftCyan,
+                            time: swiftTaskTime(index: number - 1)
+                        )
+                    }
+                }
             }
 
             // Why faster
@@ -306,25 +329,31 @@ struct DeepDiveView: View {
     }
 
     private func tableRow(label: String, python: String, swift: String, isHeader: Bool = false) -> some View {
-        HStack {
+        let valueWidth: CGFloat = isCompact ? 60 : 80
+        return HStack(spacing: 6) {
             Text(label)
                 .font(.system(.caption2, design: .monospaced))
                 .fontWeight(isHeader ? .bold : .regular)
                 .foregroundStyle(isHeader ? Color.whiteText : Color.dimText)
-                .lineLimit(1)
+                .lineLimit(isCompact ? 2 : 1)
+                .minimumScaleFactor(0.85)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
             Text(python)
                 .font(.system(.caption2, design: .monospaced))
                 .fontWeight(isHeader ? .bold : .regular)
                 .foregroundStyle(Color.pythonAmber)
-                .frame(width: 80, alignment: .trailing)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+                .frame(width: valueWidth, alignment: .trailing)
 
             Text(swift)
                 .font(.system(.caption2, design: .monospaced))
                 .fontWeight(isHeader ? .bold : .regular)
                 .foregroundStyle(Color.swiftCyan)
-                .frame(width: 80, alignment: .trailing)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+                .frame(width: valueWidth, alignment: .trailing)
         }
         .padding(.vertical, 6)
         .padding(.horizontal, 8)

@@ -9,8 +9,14 @@ import Combine
 struct StreamVisualizerView: View {
     @State private var dots: [DotState] = Array(repeating: .normal, count: 500)
     @State private var cursor = 0
+    @Environment(\.horizontalSizeClass) private var hSizeClass
 
-    private let columns = Array(repeating: GridItem(.fixed(7), spacing: 2), count: 50)
+    private var isCompact: Bool { hSizeClass == .compact }
+    private var columnCount: Int { isCompact ? 25 : 50 }
+    private var dotSize: CGFloat { isCompact ? 10 : 7 }
+    private var columns: [GridItem] {
+        Array(repeating: GridItem(.fixed(dotSize), spacing: 2), count: columnCount)
+    }
     private let timer = Timer.publish(every: 0.06, on: .main, in: .common).autoconnect()
 
     /// Visual state of a single cell in the grid.
@@ -61,7 +67,7 @@ struct StreamVisualizerView: View {
                 ForEach(0 ..< dots.count, id: \.self) { i in
                     Rectangle()
                         .fill(dots[i].color)
-                        .frame(width: 7, height: 7)
+                        .frame(width: dotSize, height: dotSize)
                         .shadow(color: dots[i] == .anomaly ? .danger.opacity(0.5) : .clear, radius: 2)
                         .shadow(color: dots[i] == .active ? .swiftCyan.opacity(0.5) : .clear, radius: 3)
                 }

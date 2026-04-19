@@ -45,7 +45,22 @@ iOS benchmark app comparing Python/pandas CPU performance vs Swift/Metal GPU for
 - **ThroughputChartView.swift** — Head-to-head horizontal bar chart
 - **SpeedupBannerView.swift** — Large speedup multiplier display
 - **BenchmarkControlView.swift** — Run button, progress bar, status
-- **ChartHelpers.swift** — Shared chart styling helpers (tabHeader, chartTitle, emptyState)
+- **ChartHelpers.swift** — Shared chart styling helpers (`tabHeader` with Kiraa logo, `chartTitle`, `emptyState`) and the `KiraaLogoMark` brand view.
+
+### Assets.xcassets/
+- **KiraaLogo.imageset** — Kiraa brand mark used by `KiraaLogoMark` on every tab header; sourced from the same artwork as `AppIcon`.
+
+### Responsive layout
+
+All tab views adapt to iPhone (compact width) via `@Environment(\.horizontalSizeClass)`. iPad and macOS layouts are unchanged. Compact-width behaviour:
+- `DashboardView` hero scales 36→28pt; engine cards and control/progress-ring stack vertically.
+- `SpeedupBannerView` multiplier scales 72→52pt and stacks vertically.
+- `DeepDiveView` approach boxes stack; comparison table allows 2-line labels with 60pt value columns.
+- `TaskAnalysisView` donut charts stack; timing-chart legend moves to the bottom.
+- `DataExplorerView` plant-donut + legend stack; summary grid is 2-col instead of 3.
+- `ArchitectureGridView` becomes a single column.
+- `StreamVisualizerView` uses 25×10pt cells instead of 50×7pt to avoid overflow.
+- `ThroughputChartView` narrows side columns 70→56pt.
 
 ### Theme/
 - **AppTheme.swift** — Color palette (dark theme: cyan for Metal, amber for Python) and font definitions. All static properties must be `nonisolated` due to `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor`.

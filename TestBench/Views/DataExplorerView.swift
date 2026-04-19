@@ -8,6 +8,9 @@ import Charts
 /// and baseline comparisons.
 struct DataExplorerView: View {
     @Bindable var viewModel: BenchmarkViewModel
+    @Environment(\.horizontalSizeClass) private var hSizeClass
+
+    private var isCompact: Bool { hSizeClass == .compact }
 
     var body: some View {
         ScrollView {
@@ -125,7 +128,7 @@ struct DataExplorerView: View {
                         .foregroundStyle(Color.dimText)
                 }
             }
-            .frame(height: 320)
+            .frame(height: isCompact ? 260 : 320)
         }
         .chartCard()
     }
@@ -137,39 +140,50 @@ struct DataExplorerView: View {
             chartTitle("Spend by Plant Location")
             chartSubtitle("4 Australian plants")
 
-            HStack(spacing: 24) {
-                Chart(data.plantTotals) { plant in
-                    SectorMark(
-                        angle: .value("Total", plant.total),
-                        innerRadius: .ratio(0.55),
-                        angularInset: 2
-                    )
-                    .foregroundStyle(plantColor(plant.name))
-                    .cornerRadius(4)
-                }
-                .frame(width: 180, height: 180)
+            let donutChart = Chart(data.plantTotals) { plant in
+                SectorMark(
+                    angle: .value("Total", plant.total),
+                    innerRadius: .ratio(0.55),
+                    angularInset: 2
+                )
+                .foregroundStyle(plantColor(plant.name))
+                .cornerRadius(4)
+            }
+            .frame(width: isCompact ? 150 : 180, height: isCompact ? 150 : 180)
 
-                VStack(alignment: .leading, spacing: 8) {
-                    let grandTotal = data.plantTotals.reduce(0) { $0 + $1.total }
-                    ForEach(data.plantTotals) { plant in
-                        HStack(spacing: 8) {
-                            Circle()
-                                .fill(plantColor(plant.name))
-                                .frame(width: 8, height: 8)
-                            VStack(alignment: .leading, spacing: 1) {
-                                Text(plant.name)
-                                    .font(.system(.caption, design: .monospaced))
-                                    .fontWeight(.medium)
-                                    .foregroundStyle(Color.bodyText)
-                                Text(String(format: "%.1f%%", plant.total / grandTotal * 100))
-                                    .font(.system(.caption2, design: .monospaced))
-                                    .foregroundStyle(Color.dimText)
-                            }
+            let legend = VStack(alignment: .leading, spacing: 8) {
+                let grandTotal = data.plantTotals.reduce(0) { $0 + $1.total }
+                ForEach(data.plantTotals) { plant in
+                    HStack(spacing: 8) {
+                        Circle()
+                            .fill(plantColor(plant.name))
+                            .frame(width: 8, height: 8)
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(plant.name)
+                                .font(.system(.caption, design: .monospaced))
+                                .fontWeight(.medium)
+                                .foregroundStyle(Color.bodyText)
+                            Text(String(format: "%.1f%%", plant.total / grandTotal * 100))
+                                .font(.system(.caption2, design: .monospaced))
+                                .foregroundStyle(Color.dimText)
                         }
                     }
                 }
+            }
 
-                Spacer()
+            if isCompact {
+                VStack(spacing: 16) {
+                    donutChart
+                        .frame(maxWidth: .infinity)
+                    legend
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            } else {
+                HStack(spacing: 24) {
+                    donutChart
+                    legend
+                    Spacer()
+                }
             }
         }
         .chartCard()
@@ -248,7 +262,11 @@ struct DataExplorerView: View {
                 ("Pivot Cells", "\(data.pivotValues.count)"),
             ]
 
-            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+            let gridColumns: [GridItem] = isCompact
+                ? [GridItem(.flexible()), GridItem(.flexible())]
+                : [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())]
+
+            LazyVGrid(columns: gridColumns, spacing: 12) {
                 ForEach(stats, id: \.0) { label, value in
                     VStack(alignment: .leading, spacing: 4) {
                         Text(label)

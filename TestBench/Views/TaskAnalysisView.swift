@@ -7,6 +7,9 @@ import Charts
 /// a donut chart of time distribution, and per-task speedup bars.
 struct TaskAnalysisView: View {
     @Bindable var viewModel: BenchmarkViewModel
+    @Environment(\.horizontalSizeClass) private var hSizeClass
+
+    private var isCompact: Bool { hSizeClass == .compact }
 
     var body: some View {
         ScrollView {
@@ -65,8 +68,8 @@ struct TaskAnalysisView: View {
                         .foregroundStyle(Color.dimText)
                 }
             }
-            .chartLegend(position: .top, alignment: .trailing)
-            .frame(height: 280)
+            .chartLegend(position: isCompact ? .bottom : .top, alignment: isCompact ? .center : .trailing)
+            .frame(height: isCompact ? 240 : 280)
             .chartBackground { _ in Color.clear }
         }
         .chartCard()
@@ -131,9 +134,18 @@ struct TaskAnalysisView: View {
     // MARK: - Time Distribution (Donut)
 
     private var timeDistributionChart: some View {
-        HStack(alignment: .top, spacing: 2) {
-            donutChart(title: "Python", result: viewModel.pythonResult, accent: .pythonAmber)
-            donutChart(title: "GPU", result: viewModel.gpuResult, accent: .swiftCyan)
+        Group {
+            if isCompact {
+                VStack(spacing: 12) {
+                    donutChart(title: "Python", result: viewModel.pythonResult, accent: .pythonAmber)
+                    donutChart(title: "GPU", result: viewModel.gpuResult, accent: .swiftCyan)
+                }
+            } else {
+                HStack(alignment: .top, spacing: 2) {
+                    donutChart(title: "Python", result: viewModel.pythonResult, accent: .pythonAmber)
+                    donutChart(title: "GPU", result: viewModel.gpuResult, accent: .swiftCyan)
+                }
+            }
         }
     }
 

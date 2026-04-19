@@ -3,44 +3,27 @@ import SwiftUI
 /// Run button, progress bar, and status display for the benchmark.
 struct BenchmarkControlView: View {
     @Bindable var viewModel: BenchmarkViewModel
+    @Environment(\.horizontalSizeClass) private var hSizeClass
+
+    private var isCompact: Bool { hSizeClass == .compact }
 
     var body: some View {
         VStack(spacing: 16) {
             // Row count info
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("\(Config.numRows / 1_000_000)M transactions · \(Config.streamingBatch) batch size")
-                        .font(.monoCaption)
-                        .foregroundStyle(Color.dimText)
-
-                    let memMB = Config.numRows * MemoryLayout<Transaction>.stride / 1_048_576
-                    Text("Est. memory: ~\(memMB) MB")
-                        .font(.monoCaption)
-                        .foregroundStyle(Color.mutedText)
-                }
-
-                Spacer()
-
-                Button {
-                    viewModel.runBenchmark()
-                } label: {
-                    HStack(spacing: 8) {
-                        if viewModel.isRunning {
-                            ProgressView()
-                                .tint(.appBackground)
-                                .scaleEffect(0.7)
-                        }
-                        Text(viewModel.isRunning ? "RUNNING..." : "RUN BENCHMARK")
-                            .font(.monoCaption)
-                            .tracking(2)
-                            .fontWeight(.bold)
+            Group {
+                if isCompact {
+                    VStack(alignment: .leading, spacing: 12) {
+                        infoText
+                        runButton
+                            .frame(maxWidth: .infinity)
                     }
-                    .foregroundStyle(viewModel.isRunning ? Color.dimText : Color.appBackground)
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 12)
-                    .background(viewModel.isRunning ? Color.border : Color.swiftCyan)
+                } else {
+                    HStack {
+                        infoText
+                        Spacer()
+                        runButton
+                    }
                 }
-                .disabled(viewModel.isRunning || !viewModel.gpuAvailable)
             }
 
             // Progress
@@ -70,5 +53,42 @@ struct BenchmarkControlView: View {
                 .stroke(Color.border, lineWidth: 1)
         }
         .animation(.easeInOut(duration: 0.3), value: viewModel.isRunning)
+    }
+
+    private var infoText: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text("\(Config.numRows / 1_000_000)M transactions · \(Config.streamingBatch) batch size")
+                .font(.monoCaption)
+                .foregroundStyle(Color.dimText)
+
+            let memMB = Config.numRows * MemoryLayout<Transaction>.stride / 1_048_576
+            Text("Est. memory: ~\(memMB) MB")
+                .font(.monoCaption)
+                .foregroundStyle(Color.mutedText)
+        }
+    }
+
+    private var runButton: some View {
+        Button {
+            viewModel.runBenchmark()
+        } label: {
+            HStack(spacing: 8) {
+                if viewModel.isRunning {
+                    ProgressView()
+                        .tint(.appBackground)
+                        .scaleEffect(0.7)
+                }
+                Text(viewModel.isRunning ? "RUNNING..." : "RUN BENCHMARK")
+                    .font(.monoCaption)
+                    .tracking(2)
+                    .fontWeight(.bold)
+            }
+            .foregroundStyle(viewModel.isRunning ? Color.dimText : Color.appBackground)
+            .frame(maxWidth: isCompact ? .infinity : nil)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 12)
+            .background(viewModel.isRunning ? Color.border : Color.swiftCyan)
+        }
+        .disabled(viewModel.isRunning || !viewModel.gpuAvailable)
     }
 }
